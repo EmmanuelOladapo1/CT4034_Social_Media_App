@@ -9,9 +9,8 @@ try {
     echo "<p style='color: green;'>Connection successful!</p>";
 
     // Test query
-    $stmt = $conn->query("SELECT NOW() as current_time");
+    $stmt = $conn->query("SELECT NOW *");
     $result = $stmt->fetch(PDO::FETCH_ASSOC);
-    echo "<p>Current server time: " . $result['current_time'] . "</p>";
 
     // Display database info
     echo "<h2>Connection Details:</h2>";
