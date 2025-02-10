@@ -1,5 +1,5 @@
 <?php
-// tests/test_login.php
+// config/test_login.php
 session_start(); // Add this at the top
 require_once '../config/database.php';
 
