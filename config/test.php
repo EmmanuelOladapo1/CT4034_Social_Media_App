@@ -1,6 +1,6 @@
 <?php
 // test.php
-require_once 'config/database.php';
+require_once __DIR__ . '/database.php';  // Use __DIR__ to ensure correct path
 
 try {
   // If connection is successful
