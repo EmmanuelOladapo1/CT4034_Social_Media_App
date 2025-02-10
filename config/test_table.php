@@ -1,6 +1,6 @@
 <?php
 // test_table.php
-require_once __DIR__ . '/config/database.php';
+require_once 'database.php';  // Since it's in the same config folder
 
 try {
   // Check if users table exists
