@@ -1,4 +1,4 @@
-# Create feed.php in root directory
+// Purpose: Display the feed of posts and allow users to create new posts
 <?php
 session_start();
 require_once 'config/database.php';
@@ -67,13 +67,21 @@ if (!isset($_SESSION['user_id'])) {
   </div>
 
   <script>
+    let map;
+
     function getLocation() {
       if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(function(position) {
-          document.getElementById('latitude').value = position.coords.latitude;
-          document.getElementById('longitude').value = position.coords.longitude;
-        });
+        navigator.geolocation.getCurrentPosition(showPosition);
+      } else {
+        alert("Geolocation not supported");
       }
+    }
+
+    function showPosition(position) {
+      document.getElementById('latitude').value = position.coords.latitude;
+      document.getElementById('longitude').value = position.coords.longitude;
+      alert("Location added!");
+      initMap(position.coords.latitude, position.coords.longitude);
     }
   </script>
 </body>
