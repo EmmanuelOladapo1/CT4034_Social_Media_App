@@ -2,11 +2,11 @@
 session_start();
 require_once 'database.php';
 
-// Remove login redirect for testing
-// if (!isset($_SESSION['user_id'])) {
-//     header("Location: ../auth/login.php");
-//     exit();
-// }
+// Redirect if not logged in
+if (!isset($_SESSION['user_id'])) {
+  header("Location: /auth/login.php");
+  exit();
+}
 
 echo "<h2>Feed System Test</h2>";
 
@@ -27,7 +27,7 @@ try {
   // Test 3: Check session status
   if (session_status() === PHP_SESSION_ACTIVE) {
     echo "<p style='color:green'>Test 3 - Session is active</p>";
-    echo "Session user_id: " . ($_SESSION['user_id'] ?? 'Not set');
+    echo "Session user_id: " . $_SESSION['user_id'];
   } else {
     echo "<p style='color:red'>Test 3 - Session not active</p>";
   }
