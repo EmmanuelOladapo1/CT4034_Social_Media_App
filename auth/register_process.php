@@ -41,10 +41,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
       // Hash password
       $password_hash = password_hash($password, PASSWORD_DEFAULT);
+      var_dump($password_hash);
 
       // Insert new user
       $stmt = $conn->prepare("INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)");
       $stmt->execute([$username, $email, $password_hash]);
+      $user = $stmt->fetch();
+      var_dump($user); // Temporary debug
+      var_dump(password_verify($password, $user['password_hash']));
 
       // Start session and redirect
       session_start();
