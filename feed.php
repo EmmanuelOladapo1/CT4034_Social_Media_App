@@ -1,10 +1,10 @@
 // Purpose: Display the feed of posts and allow users to create new posts
 <?php
 session_start();
-require_once '../config/database.php';
+require_once 'config/database.php';
 
 if (!isset($_SESSION['user_id'])) {
-  header("Location: ../auth/login.php");
+  header("Location: feed.php");
   exit();
 }
 ?>
