@@ -1,87 +1,87 @@
 // Purpose: Display the feed of posts and allow users to create new posts
 <?php
 session_start();
-require_once 'config/database.php';
+require_once '../config/database.php';
 
-// Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
-  header("Location: auth/login.php");
+  header("Location: ../auth/login.php");
   exit();
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
   <meta charset="UTF-8">
-  <title>Feed - Social Media</title>
+  <title>Feed</title>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
-  <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY"></script>
 </head>
 
 <body class="bg-gray-100">
-  <div class="container mx-auto px-4 py-8">
-    <!-- Create Post Form -->
-    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-      <form action="process_post.php" method="POST" enctype="multipart/form-data">
-        <textarea name="content" class="w-full p-2 border rounded mb-4" placeholder="What's on your mind?"></textarea>
+  <div class="container mx-auto p-4">
+    <h1 class="text-2xl mb-4">Welcome, <?php echo htmlspecialchars($_SESSION['username']); ?></h1>
+
+    <!-- Post Form -->
+    <div class="bg-white p-4 rounded-lg shadow mb-4">
+      <form action="process_post.php" method="POST" class="space-y-4">
+        <textarea name="content" class="w-full p-2 border rounded" placeholder="What's on your mind?"></textarea>
 
         <div class="flex items-center gap-4">
-          <input type="file" name="image" accept="image/*">
-          <button type="button" onclick="getLocation()" class="px-4 py-2 bg-gray-500 text-white rounded">Add Location</button>
+          <button type="button" onclick="getLocation()" class="bg-gray-500 text-white px-4 py-2 rounded">
+            Add Location
+          </button>
+          <span id="locationStatus" class="text-sm text-gray-600"></span>
           <input type="hidden" name="latitude" id="latitude">
           <input type="hidden" name="longitude" id="longitude">
         </div>
 
-        <button type="submit" class="mt-4 px-6 py-2 bg-blue-500 text-white rounded">Post</button>
+        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Post</button>
       </form>
     </div>
 
-    <!-- Posts Feed -->
+    <!-- Display Posts -->
     <?php
-    try {
-      $stmt = $conn->query("SELECT posts.*, users.username
-                                 FROM posts
-                                 JOIN users ON posts.user_id = users.user_id
-                                 ORDER BY posts.created_at DESC");
-      while ($post = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        echo "<div class='bg-white rounded-lg shadow-md p-6 mb-4'>";
-        echo "<div class='flex items-center mb-4'>";
-        echo "<span class='font-bold'>" . htmlspecialchars($post['username']) . "</span>";
-        echo "<span class='text-gray-500 ml-2'>" . $post['created_at'] . "</span>";
-        echo "</div>";
-        echo "<p class='mb-4'>" . htmlspecialchars($post['content']) . "</p>";
-        if ($post['image_url']) {
-          echo "<img src='" . htmlspecialchars($post['image_url']) . "' class='max-w-full mb-4'>";
-        }
-        if ($post['latitude'] && $post['longitude']) {
-          echo "<div id='map-" . $post['post_id'] . "' class='h-48 mb-4'></div>";
-        }
-        echo "</div>";
+    $stmt = $conn->query("SELECT posts.*, users.username FROM posts
+                             JOIN users ON posts.user_id = users.user_id
+                             ORDER BY posts.created_at DESC");
+    while ($post = $stmt->fetch(PDO::FETCH_ASSOC)) {
+      echo "<div class='bg-white p-4 rounded-lg shadow mb-4'>";
+      echo "<p class='font-bold'>" . htmlspecialchars($post['username']) . "</p>";
+      echo "<p class='mb-2'>" . htmlspecialchars($post['content']) . "</p>";
+
+      if ($post['latitude'] && $post['longitude']) {
+        echo "<p class='text-sm text-gray-600'>Posted from: " .
+          round($post['latitude'], 4) . ", " . round($post['longitude'], 4) . "</p>";
       }
-    } catch (PDOException $e) {
-      echo "<p class='text-red-500'>Error loading posts: " . $e->getMessage() . "</p>";
+
+      echo "<p class='text-sm text-gray-500'>" . $post['created_at'] . "</p>";
+      echo "</div>";
     }
     ?>
   </div>
 
   <script>
-    let map;
-
     function getLocation() {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(showPosition);
-      } else {
-        alert("Geolocation not supported");
-      }
-    }
+      const status = document.getElementById('locationStatus');
+      status.textContent = "Getting location...";
 
-    function showPosition(position) {
-      document.getElementById('latitude').value = position.coords.latitude;
-      document.getElementById('longitude').value = position.coords.longitude;
-      alert("Location added!");
-      initMap(position.coords.latitude, position.coords.longitude);
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          function(position) {
+            document.getElementById('latitude').value = position.coords.latitude;
+            document.getElementById('longitude').value = position.coords.longitude;
+            status.textContent = "Location added ✓";
+            status.style.color = "green";
+          },
+          function(error) {
+            status.textContent = "Error getting location: " + error.message;
+            status.style.color = "red";
+          }
+        );
+      } else {
+        status.textContent = "Geolocation is not supported by this browser.";
+        status.style.color = "red";
+      }
     }
   </script>
 </body>
