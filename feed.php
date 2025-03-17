@@ -14,6 +14,8 @@ if (!isset($_SESSION['user_id'])) {
   <meta charset="UTF-8">
   <title>Feed</title>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 
 <body class="bg-gray-100">
@@ -42,8 +44,8 @@ if (!isset($_SESSION['user_id'])) {
     <!-- Display Posts -->
     <?php
     $stmt = $conn->query("SELECT posts.*, users.username FROM posts
-                         JOIN users ON posts.user_id = users.user_id
-                         ORDER BY posts.created_at DESC");
+                     JOIN users ON posts.user_id = users.user_id
+                     ORDER BY posts.created_at DESC");
     while ($post = $stmt->fetch(PDO::FETCH_ASSOC)) {
       echo "<div class='bg-white p-4 rounded-lg shadow mb-4'>";
       echo "<p class='font-bold'>" . htmlspecialchars($post['username']) . "</p>";
@@ -54,8 +56,14 @@ if (!isset($_SESSION['user_id'])) {
       }
 
       if ($post['latitude'] && $post['longitude']) {
-        echo "<p class='text-sm text-gray-600'>Posted from: " .
-          round($post['latitude'], 4) . ", " . round($post['longitude'], 4) . "</p>";
+        echo "<div id='map-" . $post['post_id'] . "' class='h-48 w-full mb-2'></div>";
+        echo "<script>
+        const map" . $post['post_id'] . " = L.map('map-" . $post['post_id'] . "').setView([" . $post['latitude'] . ", " . $post['longitude'] . "], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map" . $post['post_id'] . ");
+        L.marker([" . $post['latitude'] . ", " . $post['longitude'] . "]).addTo(map" . $post['post_id'] . ");
+    </script>";
       }
 
       echo "<p class='text-sm text-gray-500'>" . $post['created_at'] . "</p>";
