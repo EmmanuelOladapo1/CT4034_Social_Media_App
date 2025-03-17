@@ -38,6 +38,7 @@ if (!isset($_SESSION['user_id'])) {
           <span id="locationStatus" class="text-sm text-gray-600"></span>
           <input type="hidden" name="latitude" id="latitude">
           <input type="hidden" name="longitude" id="longitude">
+          <input type="hidden" name="location_name" id="location_name">
         </div>
 
         <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Post</button>
@@ -63,7 +64,7 @@ if (!isset($_SESSION['user_id'])) {
       }
 
       if ($post['latitude'] && $post['longitude']) {
-        echo "<div id='map-" . $post['post_id'] . "' class='h-48 w-full mb-2'></div>";
+        echo "<div id='map-" . $post['post_id'] . "' class='h-32 w-full mb-2'></div>"; // Reduced height
         echo "<p class='text-sm text-gray-600'>Posted from: <span id='location-name-" . $post['post_id'] . "'>Loading location...</span></p>";
         echo "<script>
             const map" . $post['post_id'] . " = L.map('map-" . $post['post_id'] . "').setView([" . $post['latitude'] . ", " . $post['longitude'] . "], 13);
@@ -87,14 +88,15 @@ if (!isset($_SESSION['user_id'])) {
 
       echo "<p class='text-sm text-gray-500'>" . $post['created_at'] . "</p>";
 
-      // Like button
+      // Like button with star icon
       $likeStmt = $conn->prepare("SELECT COUNT(*) FROM likes WHERE post_id = ? AND user_id = ?");
       $likeStmt->execute([$post['post_id'], $_SESSION['user_id']]);
       $liked = ($likeStmt->fetchColumn() > 0);
 
       echo "<div class='flex items-center mt-2 mb-2'>";
-      echo "<button class='like-button " . ($liked ? 'text-blue-500' : 'text-gray-500') . " hover:text-blue-500' data-post-id='" . $post['post_id'] . "'>";
-      echo "<svg xmlns='http://www.w3.org/2000/svg' class='h-5 w-5 inline' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905V10m5 0v2a2 2 0 01-2 2h-2.5' /></svg>";
+      echo "<button class='like-button " . ($liked ? 'text-yellow-500' : 'text-gray-500') . " hover:text-yellow-500' data-post-id='" . $post['post_id'] . "'>";
+      // Star icon
+      echo "<svg xmlns='http://www.w3.org/2000/svg' class='h-5 w-5 inline' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z' /></svg>";
       echo " <span class='like-count'>" . ($post['like_count'] ?? 0) . "</span>";
       echo "</button>";
       echo "</div>";
@@ -132,10 +134,25 @@ if (!isset($_SESSION['user_id'])) {
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           function(position) {
-            document.getElementById('latitude').value = position.coords.latitude;
-            document.getElementById('longitude').value = position.coords.longitude;
-            status.textContent = "Location added ✓";
-            status.style.color = "green";
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            document.getElementById('latitude').value = lat;
+            document.getElementById('longitude').value = lng;
+
+            // Get location name using reverse geocoding
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`)
+              .then(response => response.json())
+              .then(data => {
+                const locationName = data.display_name || 'Unknown location';
+                document.getElementById('location_name').value = locationName;
+                status.textContent = "Location added: " + locationName;
+                status.style.color = "green";
+              })
+              .catch(error => {
+                console.error('Error:', error);
+                status.textContent = "Location added ✓";
+                status.style.color = "green";
+              });
           },
           function(error) {
             status.textContent = "Error getting location: " + error.message;
@@ -167,7 +184,7 @@ if (!isset($_SESSION['user_id'])) {
             .then(data => {
               if (data.success) {
                 countElement.textContent = data.count;
-                this.classList.toggle('text-blue-500', data.action === 'liked');
+                this.classList.toggle('text-yellow-500', data.action === 'liked');
                 this.classList.toggle('text-gray-500', data.action === 'unliked');
               }
             });
