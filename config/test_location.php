@@ -1,5 +1,5 @@
 <?php
-//test_location.php
+// tests/test_location.php
 session_start();
 require_once '../config/database.php';
 
@@ -23,7 +23,7 @@ try {
     echo "<div style='border: 1px solid #ccc; padding: 10px; margin-bottom: 20px;'>";
     echo "<p><strong>User:</strong> " . htmlspecialchars($post['username']) . "</p>";
     echo "<p><strong>Content:</strong> " . htmlspecialchars($post['content']) . "</p>";
-    echo "<p><strong>Location:</strong> Latitude " . $post['latitude'] . ", Longitude " . $post['longitude'] . "</p>";
+    echo "<p><strong>Location:</strong> <span id='location-name'>Fetching location name...</span></p>";
     echo "<p><strong>Posted at:</strong> " . $post['created_at'] . "</p>";
 
     // Include Leaflet map to test
@@ -38,6 +38,17 @@ try {
                 attribution: '&copy; OpenStreetMap contributors'
             }).addTo(testMap);
             L.marker([" . $post['latitude'] . ", " . $post['longitude'] . "]).addTo(testMap);
+
+            // Fetch location name using Nominatim (OpenStreetMap's reverse geocoding service)
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=" . $post['latitude'] . "&lon=" . $post['longitude'] . "&zoom=18&addressdetails=1`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('location-name').textContent = data.display_name || 'Location not found';
+                })
+                .catch(error => {
+                    console.error('Error fetching location name:', error);
+                    document.getElementById('location-name').textContent = 'Error fetching location name';
+                });
         </script>";
   } else {
     echo "<p>No posts with location data found. Create a post with location first.</p>";

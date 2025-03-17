@@ -51,19 +51,27 @@ if (!isset($_SESSION['user_id'])) {
       echo "<p class='font-bold'>" . htmlspecialchars($post['username']) . "</p>";
       echo "<p class='mb-2'>" . htmlspecialchars($post['content']) . "</p>";
 
-      if ($post['image_url']) {
-        echo "<img src='" . htmlspecialchars($post['image_url']) . "' class='max-w-md mb-2'>";
-      }
-
       if ($post['latitude'] && $post['longitude']) {
         echo "<div id='map-" . $post['post_id'] . "' class='h-48 w-full mb-2'></div>";
+        echo "<p class='text-sm text-gray-600'>Posted from: <span id='location-name-" . $post['post_id'] . "'>Loading location...</span></p>";
         echo "<script>
-        const map" . $post['post_id'] . " = L.map('map-" . $post['post_id'] . "').setView([" . $post['latitude'] . ", " . $post['longitude'] . "], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(map" . $post['post_id'] . ");
-        L.marker([" . $post['latitude'] . ", " . $post['longitude'] . "]).addTo(map" . $post['post_id'] . ");
-    </script>";
+            const map" . $post['post_id'] . " = L.map('map-" . $post['post_id'] . "').setView([" . $post['latitude'] . ", " . $post['longitude'] . "], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map" . $post['post_id'] . ");
+            L.marker([" . $post['latitude'] . ", " . $post['longitude'] . "]).addTo(map" . $post['post_id'] . ");
+
+            // Fetch location name
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=" . $post['latitude'] . "&lon=" . $post['longitude'] . "&zoom=18&addressdetails=1`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('location-name-" . $post['post_id'] . "').textContent = data.display_name || 'Unknown location';
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('location-name-" . $post['post_id'] . "').textContent = 'Unknown location';
+                });
+        </script>";
       }
 
       echo "<p class='text-sm text-gray-500'>" . $post['created_at'] . "</p>";
