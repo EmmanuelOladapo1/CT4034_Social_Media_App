@@ -56,13 +56,29 @@ if (!isset($_SESSION['user_id'])) {
 
     while ($post = $stmt->fetch(PDO::FETCH_ASSOC)) {
       echo "<div class='bg-white p-4 rounded-lg shadow mb-4'>";
+
+      // Post header with username and timestamp
+      echo "<div class='flex justify-between items-start mb-2'>";
       echo "<p class='font-bold'>" . htmlspecialchars($post['username']) . "</p>";
+
+      // Only show edit/delete for post owner
+      if ($post['user_id'] == $_SESSION['user_id']) {
+        echo "<div class='flex space-x-2'>";
+        echo "<a href='edit_post.php?id=" . $post['post_id'] . "' class='text-blue-500 hover:underline'>Edit</a>";
+        echo "<a href='delete_post.php?id=" . $post['post_id'] . "' class='text-red-500 hover:underline' onclick='return confirm(\"Are you sure you want to delete this post?\")'>Delete</a>";
+        echo "</div>";
+      }
+      echo "</div>";
+
+      // Post content
       echo "<p class='mb-2'>" . htmlspecialchars($post['content']) . "</p>";
 
+      // Post image
       if ($post['image_url']) {
         echo "<img src='" . htmlspecialchars($post['image_url']) . "' class='max-w-md mb-2'>";
       }
 
+      // Post location
       if ($post['latitude'] && $post['longitude']) {
         echo "<div id='map-" . $post['post_id'] . "' class='h-32 w-full mb-2'></div>"; // Reduced height
         echo "<p class='text-sm text-gray-600'>Posted from: <span id='location-name-" . $post['post_id'] . "'>Loading location...</span></p>";
