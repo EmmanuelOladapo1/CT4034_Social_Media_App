@@ -14,8 +14,6 @@ if (!isset($_SESSION['user_id'])) {
   <meta charset="UTF-8">
   <title>Feed</title>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
-  <!-- Google Maps API with your key -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBH49WG8ok6dWR_0PL8qa4q7c1FhBte71I"></script>
 </head>
 
 <body class="bg-gray-100">
@@ -35,7 +33,6 @@ if (!isset($_SESSION['user_id'])) {
           <span id="locationStatus" class="text-sm text-gray-600"></span>
           <input type="hidden" name="latitude" id="latitude">
           <input type="hidden" name="longitude" id="longitude">
-          <input type="hidden" name="location_name" id="location_name">
         </div>
 
         <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Post</button>
@@ -56,9 +53,7 @@ if (!isset($_SESSION['user_id'])) {
         echo "<img src='" . htmlspecialchars($post['image_url']) . "' class='max-w-md mb-2'>";
       }
 
-      if ($post['location_name']) {
-        echo "<p class='text-sm text-gray-600'>Posted from: " . htmlspecialchars($post['location_name']) . "</p>";
-      } else if ($post['latitude'] && $post['longitude']) {
+      if ($post['latitude'] && $post['longitude']) {
         echo "<p class='text-sm text-gray-600'>Posted from: " .
           round($post['latitude'], 4) . ", " . round($post['longitude'], 4) . "</p>";
       }
@@ -70,12 +65,6 @@ if (!isset($_SESSION['user_id'])) {
   </div>
 
   <script>
-    let geocoder;
-
-    function initGeocoder() {
-      geocoder = new google.maps.Geocoder();
-    }
-
     function getLocation() {
       const status = document.getElementById('locationStatus');
       status.textContent = "Getting location...";
@@ -83,27 +72,10 @@ if (!isset($_SESSION['user_id'])) {
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           function(position) {
-            const lat = position.coords.latitude;
-            const lng = position.coords.longitude;
-            document.getElementById('latitude').value = lat;
-            document.getElementById('longitude').value = lng;
-
-            // Get location name using reverse geocoding
-            geocoder.geocode({
-              location: {
-                lat: lat,
-                lng: lng
-              }
-            }, (results, status) => {
-              if (status === "OK" && results[0]) {
-                const locationName = results[0].formatted_address;
-                document.getElementById('location_name').value = locationName;
-                status.textContent = "Location added: " + locationName;
-              } else {
-                status.textContent = "Location added ✓";
-              }
-              status.style.color = "green";
-            });
+            document.getElementById('latitude').value = position.coords.latitude;
+            document.getElementById('longitude').value = position.coords.longitude;
+            status.textContent = "Location added ✓";
+            status.style.color = "green";
           },
           function(error) {
             status.textContent = "Error getting location: " + error.message;
@@ -114,10 +86,6 @@ if (!isset($_SESSION['user_id'])) {
         status.textContent = "Geolocation is not supported by this browser.";
         status.style.color = "red";
       }
-    }
-
-    window.onload = function() {
-      initGeocoder();
     }
   </script>
 </body>

@@ -11,7 +11,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $content = trim($_POST['content']);
   $latitude = !empty($_POST['latitude']) ? $_POST['latitude'] : null;
   $longitude = !empty($_POST['longitude']) ? $_POST['longitude'] : null;
-  $location_name = !empty($_POST['location_name']) ? $_POST['location_name'] : null;
   $image_url = null;
 
   // Handle image upload
@@ -28,9 +27,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
 
   try {
-    $stmt = $conn->prepare("INSERT INTO posts (user_id, content, image_url, latitude, longitude, location_name) VALUES (?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$_SESSION['user_id'], $content, $image_url, $latitude, $longitude, $location_name]);
+    $stmt = $conn->prepare("INSERT INTO posts (user_id, content, image_url, latitude, longitude) VALUES (?, ?, ?, ?, ?)");
+    $stmt->execute([$_SESSION['user_id'], $content, $image_url, $latitude, $longitude]);
     header("Location: feed.php");
+    exit(); // Add exit after redirect
   } catch (PDOException $e) {
     die("Error creating post: " . $e->getMessage());
   }
