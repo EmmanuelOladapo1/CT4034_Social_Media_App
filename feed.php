@@ -134,7 +134,7 @@ $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
 
         // Only fetch location name if it's not already in the database
         if (!$post['location_name']) {
-            echo "
+          echo "
             // Fetch location name
             fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=" . $post['latitude'] . "&lon=" . $post['longitude'] . "&zoom=18&addressdetails=1`)
                 .then(response => response.json())
@@ -166,4 +166,130 @@ $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
       echo "</div>";
 
       // Comment form
-      echo "<div class='
+      echo "<div class='mt-3'>";
+      echo "<form class='comment-form flex' data-post-id='" . $post['post_id'] . "'>";
+      echo "<input type='text' name='comment_content' placeholder='Write a comment...' class='w-full p-2 border rounded-l'>";
+      echo "<button type='submit' class='bg-blue-500 text-white px-4 py-2 rounded-r'>Comment</button>";
+      echo "</form>";
+      echo "</div>";
+
+      // Display comments
+      echo "<div class='comments-section mt-2 ml-4 text-sm'>";
+      $commentStmt = $conn->prepare("SELECT c.*, u.username FROM comments c JOIN users u ON c.user_id = u.user_id WHERE c.post_id = ? ORDER BY c.created_at ASC");
+      $commentStmt->execute([$post['post_id']]);
+      while ($comment = $commentStmt->fetch(PDO::FETCH_ASSOC)) {
+        echo "<div class='comment p-2 mb-1 bg-gray-50 rounded'>";
+        echo "<strong>" . htmlspecialchars($comment['username']) . ":</strong> ";
+        echo htmlspecialchars($comment['content']);
+        echo "</div>";
+      }
+      echo "</div>";
+
+      echo "</div>"; // Close post div
+    }
+    ?>
+  </div>
+
+  <script>
+    function getLocation() {
+      const status = document.getElementById('locationStatus');
+      status.textContent = "Getting location...";
+
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          function(position) {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            document.getElementById('latitude').value = lat;
+            document.getElementById('longitude').value = lng;
+
+            // Get location name using reverse geocoding
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`)
+              .then(response => response.json())
+              .then(data => {
+                const locationName = data.display_name || 'Unknown location';
+                document.getElementById('location_name').value = locationName;
+                status.textContent = "Location added: " + locationName;
+                status.style.color = "green";
+              })
+              .catch(error => {
+                console.error('Error:', error);
+                status.textContent = "Location added ✓";
+                status.style.color = "green";
+              });
+          },
+          function(error) {
+            status.textContent = "Error getting location: " + error.message;
+            status.style.color = "red";
+          }
+        );
+      } else {
+        status.textContent = "Geolocation is not supported by this browser.";
+        status.style.color = "red";
+      }
+    }
+
+    // Handle likes and comments
+    document.addEventListener('DOMContentLoaded', function() {
+      // Handle likes
+      document.querySelectorAll('.like-button').forEach(button => {
+        button.addEventListener('click', function() {
+          const postId = this.dataset.postId;
+          const countElement = this.querySelector('.like-count');
+
+          fetch('like_post.php', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+              },
+              body: 'post_id=' + postId
+            })
+            .then(response => response.json())
+            .then(data => {
+              if (data.success) {
+                countElement.textContent = data.count;
+                this.classList.toggle('text-yellow-500', data.action === 'liked');
+                this.classList.toggle('text-gray-500', data.action === 'unliked');
+              }
+            });
+        });
+      });
+
+      // Handle comments
+      document.querySelectorAll('.comment-form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+          e.preventDefault();
+          const postId = this.dataset.postId;
+          const input = this.querySelector('input[name="comment_content"]');
+          const content = input.value.trim();
+
+          if (!content) return;
+
+          fetch('add_comment.php', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+              },
+              body: 'post_id=' + postId + '&content=' + encodeURIComponent(content)
+            })
+            .then(response => response.json())
+            .then(data => {
+              if (data.success) {
+                const comment = data.comment;
+                const commentHTML = `
+                            <div class="comment p-2 mb-1 bg-gray-50 rounded">
+                                <strong>${comment.username}:</strong> ${comment.content}
+                            </div>
+                        `;
+                const commentsSection = this.parentElement.nextElementSibling;
+                commentsSection.innerHTML += commentHTML;
+                input.value = '';
+              }
+            });
+        });
+      });
+    });
+  </script>
+</body>
+
+</html>
