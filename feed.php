@@ -178,14 +178,20 @@ $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
       $commentStmt = $conn->prepare("SELECT c.*, u.username FROM comments c JOIN users u ON c.user_id = u.user_id WHERE c.post_id = ? ORDER BY c.created_at ASC");
       $commentStmt->execute([$post['post_id']]);
       while ($comment = $commentStmt->fetch(PDO::FETCH_ASSOC)) {
-        echo "<div class='comment p-2 mb-1 bg-gray-50 rounded'>";
+        echo "<div class='comment p-2 mb-1 bg-gray-50 rounded flex justify-between' id='comment-" . $comment['comment_id'] . "'>";
+        echo "<div>";
         echo "<strong>" . htmlspecialchars($comment['username']) . ":</strong> ";
         echo htmlspecialchars($comment['content']);
         echo "</div>";
+
+        // Only show delete button if comment belongs to current user
+        if ($comment['user_id'] == $_SESSION['user_id']) {
+          echo "<button class='delete-comment text-red-500 text-xs hover:underline' data-comment-id='" . $comment['comment_id'] . "'>Delete</button>";
+        }
+
+        echo "</div>";
       }
       echo "</div>";
-
-      echo "</div>"; // Close post div
     }
     ?>
   </div>
@@ -276,17 +282,47 @@ $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
             .then(data => {
               if (data.success) {
                 const comment = data.comment;
+                // Updated HTML structure to match existing comments with delete button
                 const commentHTML = `
-                            <div class="comment p-2 mb-1 bg-gray-50 rounded">
-                                <strong>${comment.username}:</strong> ${comment.content}
-                            </div>
-                        `;
+                  <div class="comment p-2 mb-1 bg-gray-50 rounded flex justify-between" id="comment-${comment.comment_id}">
+                    <div>
+                      <strong>${comment.username}:</strong> ${comment.content}
+                    </div>
+                    <button class="delete-comment text-red-500 text-xs hover:underline" data-comment-id="${comment.comment_id}">Delete</button>
+                  </div>
+                `;
                 const commentsSection = this.parentElement.nextElementSibling;
                 commentsSection.innerHTML += commentHTML;
                 input.value = '';
               }
             });
         });
+      });
+
+      // Handle comment deletion (moved outside the other event listener)
+      document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('delete-comment')) {
+          if (confirm('Are you sure you want to delete this comment?')) {
+            const commentId = e.target.dataset.commentId;
+
+            fetch('delete_comment.php?id=' + commentId, {
+                method: 'GET'
+              })
+              .then(response => response.json())
+              .then(data => {
+                if (data.success) {
+                  // Remove the comment from the DOM
+                  document.getElementById('comment-' + commentId).remove();
+                } else {
+                  alert('Error: ' + data.message);
+                }
+              })
+              .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while deleting the comment');
+              });
+          }
+        }
       });
     });
   </script>
