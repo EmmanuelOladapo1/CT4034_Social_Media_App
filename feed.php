@@ -6,6 +6,11 @@ if (!isset($_SESSION['user_id'])) {
   header("Location: auth/login.php");
   exit();
 }
+
+// Get current user data
+$stmt = $conn->prepare("SELECT * FROM users WHERE user_id = ?");
+$stmt->execute([$_SESSION['user_id']]);
+$current_user = $stmt->fetch(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -19,12 +24,32 @@ if (!isset($_SESSION['user_id'])) {
 </head>
 
 <body class="bg-gray-100">
-  <div class="container mx-auto p-4">
-    <div class="flex justify-between items-center mb-6">
-      <h1 class="text-2xl">Welcome, <?php echo htmlspecialchars($_SESSION['username']); ?></h1>
-      <a href="auth/logout.php" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Logout</a>
-    </div>
+  <!-- Navigation bar -->
+  <nav class="bg-blue-600 text-white p-4">
+    <div class="container mx-auto flex justify-between items-center">
+      <a href="feed.php" class="text-2xl font-bold">SocialNet</a>
 
+      <div class="flex items-center space-x-4">
+        <a href="profile.php" class="flex items-center space-x-2">
+          <div class="w-8 h-8 rounded-full overflow-hidden bg-gray-300">
+            <?php if ($current_user['profile_image']): ?>
+              <img src="<?php echo htmlspecialchars($current_user['profile_image']); ?>" class="w-full h-full object-cover" alt="Profile">
+            <?php else: ?>
+              <div class="w-full h-full flex items-center justify-center text-gray-500 bg-white">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+            <?php endif; ?>
+          </div>
+          <span><?php echo htmlspecialchars($current_user['username']); ?></span>
+        </a>
+        <a href="auth/logout.php" class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600">Logout</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container mx-auto p-4 mt-4">
     <!-- Post Form -->
     <div class="bg-white p-4 rounded-lg shadow mb-4">
       <form action="process_post.php" method="POST" enctype="multipart/form-data" class="space-y-4">
@@ -48,7 +73,7 @@ if (!isset($_SESSION['user_id'])) {
     <!-- Display Posts -->
     <?php
     // Get posts with like counts
-    $stmt = $conn->query("SELECT p.*, u.username,
+    $stmt = $conn->query("SELECT p.*, u.username, u.profile_image,
                           (SELECT COUNT(*) FROM likes WHERE post_id = p.post_id) as like_count
                           FROM posts p
                           JOIN users u ON p.user_id = u.user_id
@@ -58,8 +83,24 @@ if (!isset($_SESSION['user_id'])) {
       echo "<div class='bg-white p-4 rounded-lg shadow mb-4'>";
 
       // Post header with username and timestamp
-      echo "<div class='flex justify-between items-start mb-2'>";
+      echo "<div class='flex justify-between items-start mb-3'>";
+      echo "<div class='flex items-center'>";
+
+      // User profile picture
+      echo "<div class='w-10 h-10 rounded-full overflow-hidden bg-gray-300 mr-3'>";
+      if ($post['profile_image']) {
+        echo "<img src='" . htmlspecialchars($post['profile_image']) . "' class='w-full h-full object-cover' alt='Profile'>";
+      } else {
+        echo "<div class='w-full h-full flex items-center justify-center text-gray-500 bg-white'>";
+        echo "<svg xmlns='http://www.w3.org/2000/svg' class='h-6 w-6' fill='none' viewBox='0 0 24 24' stroke='currentColor'>";
+        echo "<path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' />";
+        echo "</svg>";
+        echo "</div>";
+      }
+      echo "</div>";
+
       echo "<p class='font-bold'>" . htmlspecialchars($post['username']) . "</p>";
+      echo "</div>";
 
       // Only show edit/delete for post owner
       if ($post['user_id'] == $_SESSION['user_id']) {
@@ -81,14 +122,19 @@ if (!isset($_SESSION['user_id'])) {
       // Post location
       if ($post['latitude'] && $post['longitude']) {
         echo "<div id='map-" . $post['post_id'] . "' class='h-32 w-full mb-2'></div>"; // Reduced height
-        echo "<p class='text-sm text-gray-600'>Posted from: <span id='location-name-" . $post['post_id'] . "'>Loading location...</span></p>";
+        echo "<p class='text-sm text-gray-600'>Posted from: <span id='location-name-" . $post['post_id'] . "'>";
+        echo $post['location_name'] ? htmlspecialchars($post['location_name']) : "Loading location...";
+        echo "</span></p>";
         echo "<script>
             const map" . $post['post_id'] . " = L.map('map-" . $post['post_id'] . "').setView([" . $post['latitude'] . ", " . $post['longitude'] . "], 13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; OpenStreetMap contributors'
             }).addTo(map" . $post['post_id'] . ");
-            L.marker([" . $post['latitude'] . ", " . $post['longitude'] . "]).addTo(map" . $post['post_id'] . ");
+            L.marker([" . $post['latitude'] . ", " . $post['longitude'] . "]).addTo(map" . $post['post_id'] . ");";
 
+        // Only fetch location name if it's not already in the database
+        if (!$post['location_name']) {
+            echo "
             // Fetch location name
             fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=" . $post['latitude'] . "&lon=" . $post['longitude'] . "&zoom=18&addressdetails=1`)
                 .then(response => response.json())
@@ -98,8 +144,10 @@ if (!isset($_SESSION['user_id'])) {
                 .catch(error => {
                     console.error('Error:', error);
                     document.getElementById('location-name-" . $post['post_id'] . "').textContent = 'Unknown location';
-                });
-        </script>";
+                });";
+        }
+
+        echo "</script>";
       }
 
       echo "<p class='text-sm text-gray-500'>" . $post['created_at'] . "</p>";
@@ -118,130 +166,4 @@ if (!isset($_SESSION['user_id'])) {
       echo "</div>";
 
       // Comment form
-      echo "<div class='mt-3'>";
-      echo "<form class='comment-form flex' data-post-id='" . $post['post_id'] . "'>";
-      echo "<input type='text' name='comment_content' placeholder='Write a comment...' class='w-full p-2 border rounded-l'>";
-      echo "<button type='submit' class='bg-blue-500 text-white px-4 py-2 rounded-r'>Comment</button>";
-      echo "</form>";
-      echo "</div>";
-
-      // Display comments
-      echo "<div class='comments-section mt-2 ml-4 text-sm'>";
-      $commentStmt = $conn->prepare("SELECT c.*, u.username FROM comments c JOIN users u ON c.user_id = u.user_id WHERE c.post_id = ? ORDER BY c.created_at ASC");
-      $commentStmt->execute([$post['post_id']]);
-      while ($comment = $commentStmt->fetch(PDO::FETCH_ASSOC)) {
-        echo "<div class='comment p-2 mb-1 bg-gray-50 rounded'>";
-        echo "<strong>" . htmlspecialchars($comment['username']) . ":</strong> ";
-        echo htmlspecialchars($comment['content']);
-        echo "</div>";
-      }
-      echo "</div>";
-
-      echo "</div>"; // Close post div
-    }
-    ?>
-  </div>
-
-  <script>
-    function getLocation() {
-      const status = document.getElementById('locationStatus');
-      status.textContent = "Getting location...";
-
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          function(position) {
-            const lat = position.coords.latitude;
-            const lng = position.coords.longitude;
-            document.getElementById('latitude').value = lat;
-            document.getElementById('longitude').value = lng;
-
-            // Get location name using reverse geocoding
-            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`)
-              .then(response => response.json())
-              .then(data => {
-                const locationName = data.display_name || 'Unknown location';
-                document.getElementById('location_name').value = locationName;
-                status.textContent = "Location added: " + locationName;
-                status.style.color = "green";
-              })
-              .catch(error => {
-                console.error('Error:', error);
-                status.textContent = "Location added ✓";
-                status.style.color = "green";
-              });
-          },
-          function(error) {
-            status.textContent = "Error getting location: " + error.message;
-            status.style.color = "red";
-          }
-        );
-      } else {
-        status.textContent = "Geolocation is not supported by this browser.";
-        status.style.color = "red";
-      }
-    }
-
-    // Handle likes and comments
-    document.addEventListener('DOMContentLoaded', function() {
-      // Handle likes
-      document.querySelectorAll('.like-button').forEach(button => {
-        button.addEventListener('click', function() {
-          const postId = this.dataset.postId;
-          const countElement = this.querySelector('.like-count');
-
-          fetch('like_post.php', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-              },
-              body: 'post_id=' + postId
-            })
-            .then(response => response.json())
-            .then(data => {
-              if (data.success) {
-                countElement.textContent = data.count;
-                this.classList.toggle('text-yellow-500', data.action === 'liked');
-                this.classList.toggle('text-gray-500', data.action === 'unliked');
-              }
-            });
-        });
-      });
-
-      // Handle comments
-      document.querySelectorAll('.comment-form').forEach(form => {
-        form.addEventListener('submit', function(e) {
-          e.preventDefault();
-          const postId = this.dataset.postId;
-          const input = this.querySelector('input[name="comment_content"]');
-          const content = input.value.trim();
-
-          if (!content) return;
-
-          fetch('add_comment.php', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-              },
-              body: 'post_id=' + postId + '&content=' + encodeURIComponent(content)
-            })
-            .then(response => response.json())
-            .then(data => {
-              if (data.success) {
-                const comment = data.comment;
-                const commentHTML = `
-                            <div class="comment p-2 mb-1 bg-gray-50 rounded">
-                                <strong>${comment.username}:</strong> ${comment.content}
-                            </div>
-                        `;
-                const commentsSection = this.parentElement.nextElementSibling;
-                commentsSection.innerHTML += commentHTML;
-                input.value = '';
-              }
-            });
-        });
-      });
-    });
-  </script>
-</body>
-
-</html>
+      echo "<div class='
