@@ -55,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $_SESSION['user_id'] = $conn->lastInsertId();
       $_SESSION['username'] = $username;
 
-      header("Location: ../index.php");
+      header("Location: ../feed.php");
       exit();
     } catch (PDOException $e) {
       $errors[] = "Registration failed: " . $e->getMessage();
