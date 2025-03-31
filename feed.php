@@ -263,6 +263,7 @@ if (!isset($_SESSION['csrf_token'])) {
         echo "<button type='submit' class='bg-blue-500 text-white px-4 py-2 rounded-r hover:bg-blue-600'>Comment</button>";
         echo "</form>";
         echo "</div>";
+
         // Display comments
         echo "<div class='comments-section mt-2 ml-4 text-sm'>";
         $commentStmt = $conn->prepare("SELECT c.*, u.username, u.profile_image FROM comments c JOIN users u ON c.user_id = u.user_id WHERE c.post_id = ? ORDER BY c.created_at ASC");
