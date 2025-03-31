@@ -197,5 +197,62 @@ if (isset($_GET['query']) && !empty($_GET['query'])) {
         </div>
     </div>
 </body>
+// In the search.php file, update the search functionality to include comments:
+
+if ($search_type == 'posts' || $search_type == 'all') {
+// Search posts
+$stmt = $conn->prepare("SELECT p.*, u.username, u.profile_image FROM posts p
+JOIN users u ON p.user_id = u.user_id
+WHERE p.content LIKE ? OR p.location_name LIKE ?
+ORDER BY p.created_at DESC LIMIT 50");
+$stmt->execute(['%' . $search_query . '%', '%' . $search_query . '%']);
+$post_results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$search_results['posts'] = $post_results;
+
+// Add this section to search comments
+$stmt = $conn->prepare("SELECT c.*, p.content as post_content, p.post_id,
+u.username, u.profile_image
+FROM comments c
+JOIN users u ON c.user_id = u.user_id
+JOIN posts p ON c.post_id = p.post_id
+WHERE c.content LIKE ?
+ORDER BY c.created_at DESC LIMIT 50");
+$stmt->execute(['%' . $search_query . '%']);
+$comment_results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$search_results['comments'] = $comment_results;
+}
+<?php if ($search_type == 'posts' || $search_type == 'all'): ?>
+    <!-- Comments Results -->
+    <?php if (!empty($search_results['comments'])): ?>
+        <div class="bg-white p-4 rounded-lg shadow mb-4">
+            <h3 class="text-lg font-bold mb-2">Comments</h3>
+
+            <?php foreach ($search_results['comments'] as $comment): ?>
+                <div class="border-b last:border-b-0 py-3">
+                    <div class="flex items-center mb-1">
+                        <div class="w-6 h-6 rounded-full overflow-hidden bg-gray-300 mr-2">
+                            <?php if (!empty($comment['profile_image'])): ?>
+                                <img src="<?php echo htmlspecialchars($comment['profile_image']); ?>" class="w-full h-full object-cover" alt="Profile">
+                            <?php else: ?>
+                                <!-- Default profile icon -->
+                                <div class="w-full h-full flex items-center justify-center text-gray-500 bg-white">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                    </svg>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                        <p class="font-bold"><?php echo htmlspecialchars($comment['username']); ?></p>
+                    </div>
+
+                    <p class="mb-1 pl-8"><?php echo htmlspecialchars($comment['content']); ?></p>
+                    <p class="text-xs text-gray-500 pl-8">Comment on post: "<?php echo htmlspecialchars(substr($comment['post_content'], 0, 50)); ?><?php echo strlen($comment['post_content']) > 50 ? '...' : ''; ?>"</p>
+
+                    <a href="feed.php#comment-<?php echo $comment['comment_id']; ?>" class="text-blue-500 hover:underline pl-8">View comment</a>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
+<?php endif; ?>
 
 </html>

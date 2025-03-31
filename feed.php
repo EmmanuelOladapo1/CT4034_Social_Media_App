@@ -468,5 +468,337 @@ if (!isset($_SESSION['csrf_token'])) {
     });
   </script>
 </body>
+// In the comment display section of feed.php, modify the code:
+
+echo "<div class='comment p-2 mb-1 bg-gray-50 rounded flex flex-col' id='comment-" . $comment[' comment_id'] . "'>" ;
+  echo "<div class='flex justify-between items-start w-full'>" ;
+  echo "<div class='flex items-start'>" ;
+  // Profile picture code remains the same
+  echo "</div>" ;
+
+  // Content section remains the same
+  echo "<div>" ;
+  echo "<p class='font-semibold'>" . htmlspecialchars($comment['username']) . "</p>" ;
+  echo "<p class='whitespace-pre-wrap'>" . htmlspecialchars($comment['content']) . "</p>" ;
+  echo "<p class='text-xs text-gray-500 mt-1'>" . date('M j, Y g:i a', strtotime($comment['created_at'])) . "</p>" ;
+  echo "</div>" ;
+
+  // Action buttons
+  echo "<div class='flex space-x-2'>" ;
+  echo "<button class='reply-toggle text-blue-500 text-xs hover:underline' data-comment-id='" . $comment['comment_id'] . "'>Reply</button>" ;
+  // Delete button (if owner)
+  if ($comment['user_id']==$_SESSION['user_id']) {
+  echo "<button class='delete-comment text-red-500 text-xs hover:underline' data-comment-id='" . $comment['comment_id'] . "'>Delete</button>" ;
+  }
+  echo "</div>" ;
+  echo "</div>" ;
+
+  // Reply form (hidden by default)
+  echo "<div class='reply-form-container mt-2 ml-6 hidden' id='reply-form-" . $comment['comment_id'] . "'>" ;
+  echo "<form class='reply-form flex' data-comment-id='" . $comment['comment_id'] . "'>" ;
+  echo "<input type='hidden' name='csrf_token' value='" . $_SESSION['csrf_token'] . "'>" ;
+  echo "<input type='text' name='reply_content' placeholder='Write a reply...' class='flex-1 p-1 text-sm border rounded-l'>" ;
+  echo "<button type='submit' class='bg-blue-500 text-white px-2 py-1 text-sm rounded-r'>Reply</button>" ;
+  echo "</form>" ;
+  echo "</div>" ;
+
+  // Replies container
+  echo "<div class='replies-container ml-6 mt-1' id='replies-" . $comment['comment_id'] . "'>" ;
+  // Fetch and display existing replies
+  $replyStmt=$conn->prepare("SELECT r.*, u.username, u.profile_image FROM comment_replies r JOIN users u ON r.user_id = u.user_id WHERE r.comment_id = ? ORDER BY r.created_at ASC");
+  $replyStmt->execute([$comment['comment_id']]);
+  while ($reply = $replyStmt->fetch(PDO::FETCH_ASSOC)) {
+  echo "<div class='reply p-1 bg-gray-100 rounded mb-1 flex justify-between items-start' id='reply-" . $reply[' reply_id'] . "'>" ;
+    echo "<div class='flex items-start'>" ;
+    // Reply user profile pic
+    echo "<div class='w-4 h-4 rounded-full overflow-hidden bg-gray-300 mr-1 mt-1 flex-shrink-0'>" ;
+    if (!empty($reply['profile_image'])) {
+    echo "<img src='" . htmlspecialchars($reply['profile_image']) . "' class='w-full h-full object-cover' alt='Profile'>" ;
+    } else {
+    echo "<div class='w-full h-full flex items-center justify-center text-gray-500 bg-white'>" ;
+    echo "<svg xmlns='http://www.w3.org/2000/svg' class='h-2 w-2' fill='none' viewBox='0 0 24 24' stroke='currentColor'>" ;
+    echo "<path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' />" ;
+    echo "</svg>" ;
+    echo "</div>" ;
+    }
+    echo "</div>" ;
+    echo "<div class='text-xs'>" ;
+    echo "<span class='font-semibold'>" . htmlspecialchars($reply['username']) . "</span> " ;
+    echo "<span>" . htmlspecialchars($reply['content']) . "</span>" ;
+    echo "<p class='text-xxs text-gray-500'>" . date('M j, Y g:i a', strtotime($reply['created_at'])) . "</p>" ;
+    echo "</div>" ;
+    echo "</div>" ;
+
+    // Delete reply button if owner
+    if ($reply['user_id']==$_SESSION['user_id']) {
+    echo "<button class='delete-reply text-red-500 text-xxs hover:underline' data-reply-id='" . $reply['reply_id'] . "'>Delete</button>" ;
+    }
+    echo "</div>" ;
+    }
+    echo "</div>" ;
+    echo "</div>" ;
+    // Add to your existing JavaScript at the end of feed.php
+    // Toggle reply form visibility
+    document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('reply-toggle')) {
+    const commentId=e.target.dataset.commentId;
+    const replyForm=document.getElementById('reply-form-' + commentId);
+    replyForm.classList.toggle('hidden');
+
+    if (!replyForm.classList.contains('hidden')) {
+    replyForm.querySelector('input[name="reply_content" ]').focus();
+    }
+    }
+    });
+
+    // Handle reply submission
+    document.querySelectorAll('.reply-form').forEach(form=> {
+    form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const commentId = this.dataset.commentId;
+    const input = this.querySelector('input[name="reply_content"]');
+    const content = input.value.trim();
+    const csrf = this.querySelector('input[name="csrf_token"]').value;
+
+    if (!content) return;
+
+    fetch('reply_comment.php', {
+    method: 'POST',
+    headers: {
+    'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: 'comment_id=' + commentId + '&content=' + encodeURIComponent(content) + '&csrf_token=' + encodeURIComponent(csrf)
+    })
+    .then(response => response.json())
+    .then(data => {
+    if (data.success) {
+    const reply = data.reply;
+
+    // Create new reply HTML
+    const replyHTML = `
+    <div class="reply p-1 bg-gray-100 rounded mb-1 flex justify-between items-start" id="reply-${reply.reply_id}">
+      <div class="flex items-start">
+        <div class="w-4 h-4 rounded-full overflow-hidden bg-gray-300 mr-1 mt-1 flex-shrink-0">
+          ${reply.profile_image ?
+          `<img src="${reply.profile_image}" class="w-full h-full object-cover" alt="Profile">` :
+          `<div class="w-full h-full flex items-center justify-center text-gray-500 bg-white">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-2 w-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          </div>`
+          }
+        </div>
+        <div class="text-xs">
+          <span class="font-semibold">${reply.username}</span>
+          <span>${reply.content}</span>
+          <p class="text-xxs text-gray-500">${new Date().toLocaleString()}</p>
+        </div>
+      </div>
+      <button class="delete-reply text-red-500 text-xxs hover:underline" data-reply-id="${reply.reply_id}">Delete</button>
+    </div>
+    `;
+
+    const repliesContainer = document.getElementById('replies-' + commentId);
+    repliesContainer.insertAdjacentHTML('beforeend', replyHTML);
+    input.value = '';
+
+    // Hide the reply form after submission
+    document.getElementById('reply-form-' + commentId).classList.add('hidden');
+    }
+    });
+    });
+    });
+
+    // Handle reply deletion
+    document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('delete-reply')) {
+    if (confirm('Are you sure you want to delete this reply?')) {
+    const replyId = e.target.dataset.replyId;
+
+    fetch('delete_reply.php?id=' + replyId + '&csrf_token=<?php echo urlencode($_SESSION["csrf_token"]); ?>', {
+    method: 'GET'
+    })
+    .then(response => response.json())
+    .then(data => {
+    if (data.success) {
+    // Remove the reply from the DOM
+    document.getElementById('reply-' + replyId).remove();
+    } else {
+    alert('Error: ' + data.message);
+    }
+    })
+    .catch(error => {
+    console.error('Error:', error);
+    alert('An error occurred while deleting the reply');
+    });
+    }
+    }
+    });
+    // In the comment display section of feed.php, modify the code:
+
+    echo "<div class='comment p-2 mb-1 bg-gray-50 rounded flex flex-col' id='comment-" . $comment[' comment_id'] . "'>" ;
+      echo "<div class='flex justify-between items-start w-full'>" ;
+      echo "<div class='flex items-start'>" ;
+      // Profile picture code remains the same
+      echo "</div>" ;
+
+      // Content section remains the same
+      echo "<div>" ;
+      echo "<p class='font-semibold'>" . htmlspecialchars($comment['username']) . "</p>" ;
+      echo "<p class='whitespace-pre-wrap'>" . htmlspecialchars($comment['content']) . "</p>" ;
+      echo "<p class='text-xs text-gray-500 mt-1'>" . date('M j, Y g:i a', strtotime($comment['created_at'])) . "</p>" ;
+      echo "</div>" ;
+
+      // Action buttons
+      echo "<div class='flex space-x-2'>" ;
+      echo "<button class='reply-toggle text-blue-500 text-xs hover:underline' data-comment-id='" . $comment['comment_id'] . "'>Reply</button>" ;
+      // Delete button (if owner)
+      if ($comment['user_id']==$_SESSION['user_id']) {
+      echo "<button class='delete-comment text-red-500 text-xs hover:underline' data-comment-id='" . $comment['comment_id'] . "'>Delete</button>" ;
+      }
+      echo "</div>" ;
+      echo "</div>" ;
+
+      // Reply form (hidden by default)
+      echo "<div class='reply-form-container mt-2 ml-6 hidden' id='reply-form-" . $comment['comment_id'] . "'>" ;
+      echo "<form class='reply-form flex' data-comment-id='" . $comment['comment_id'] . "'>" ;
+      echo "<input type='hidden' name='csrf_token' value='" . $_SESSION['csrf_token'] . "'>" ;
+      echo "<input type='text' name='reply_content' placeholder='Write a reply...' class='flex-1 p-1 text-sm border rounded-l'>" ;
+      echo "<button type='submit' class='bg-blue-500 text-white px-2 py-1 text-sm rounded-r'>Reply</button>" ;
+      echo "</form>" ;
+      echo "</div>" ;
+
+      // Replies container
+      echo "<div class='replies-container ml-6 mt-1' id='replies-" . $comment['comment_id'] . "'>" ;
+      // Fetch and display existing replies
+      $replyStmt=$conn->prepare("SELECT r.*, u.username, u.profile_image FROM comment_replies r JOIN users u ON r.user_id = u.user_id WHERE r.comment_id = ? ORDER BY r.created_at ASC");
+      $replyStmt->execute([$comment['comment_id']]);
+      while ($reply = $replyStmt->fetch(PDO::FETCH_ASSOC)) {
+      echo "<div class='reply p-1 bg-gray-100 rounded mb-1 flex justify-between items-start' id='reply-" . $reply[' reply_id'] . "'>" ;
+        echo "<div class='flex items-start'>" ;
+        // Reply user profile pic
+        echo "<div class='w-4 h-4 rounded-full overflow-hidden bg-gray-300 mr-1 mt-1 flex-shrink-0'>" ;
+        if (!empty($reply['profile_image'])) {
+        echo "<img src='" . htmlspecialchars($reply['profile_image']) . "' class='w-full h-full object-cover' alt='Profile'>" ;
+        } else {
+        echo "<div class='w-full h-full flex items-center justify-center text-gray-500 bg-white'>" ;
+        echo "<svg xmlns='http://www.w3.org/2000/svg' class='h-2 w-2' fill='none' viewBox='0 0 24 24' stroke='currentColor'>" ;
+        echo "<path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' />" ;
+        echo "</svg>" ;
+        echo "</div>" ;
+        }
+        echo "</div>" ;
+        echo "<div class='text-xs'>" ;
+        echo "<span class='font-semibold'>" . htmlspecialchars($reply['username']) . "</span> " ;
+        echo "<span>" . htmlspecialchars($reply['content']) . "</span>" ;
+        echo "<p class='text-xxs text-gray-500'>" . date('M j, Y g:i a', strtotime($reply['created_at'])) . "</p>" ;
+        echo "</div>" ;
+        echo "</div>" ;
+
+        // Delete reply button if owner
+        if ($reply['user_id']==$_SESSION['user_id']) {
+        echo "<button class='delete-reply text-red-500 text-xxs hover:underline' data-reply-id='" . $reply['reply_id'] . "'>Delete</button>" ;
+        }
+        echo "</div>" ;
+        }
+        echo "</div>" ;
+        echo "</div>" ;
+        // Add to your existing JavaScript at the end of feed.php
+        // Toggle reply form visibility
+        document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('reply-toggle')) {
+        const commentId=e.target.dataset.commentId;
+        const replyForm=document.getElementById('reply-form-' + commentId);
+        replyForm.classList.toggle('hidden');
+
+        if (!replyForm.classList.contains('hidden')) {
+        replyForm.querySelector('input[name="reply_content" ]').focus();
+        }
+        }
+        });
+
+        // Handle reply submission
+        document.querySelectorAll('.reply-form').forEach(form=> {
+        form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const commentId = this.dataset.commentId;
+        const input = this.querySelector('input[name="reply_content"]');
+        const content = input.value.trim();
+        const csrf = this.querySelector('input[name="csrf_token"]').value;
+
+        if (!content) return;
+
+        fetch('reply_comment.php', {
+        method: 'POST',
+        headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'comment_id=' + commentId + '&content=' + encodeURIComponent(content) + '&csrf_token=' + encodeURIComponent(csrf)
+        })
+        .then(response => response.json())
+        .then(data => {
+        if (data.success) {
+        const reply = data.reply;
+
+        // Create new reply HTML
+        const replyHTML = `
+        <div class="reply p-1 bg-gray-100 rounded mb-1 flex justify-between items-start" id="reply-${reply.reply_id}">
+          <div class="flex items-start">
+            <div class="w-4 h-4 rounded-full overflow-hidden bg-gray-300 mr-1 mt-1 flex-shrink-0">
+              ${reply.profile_image ?
+              `<img src="${reply.profile_image}" class="w-full h-full object-cover" alt="Profile">` :
+              `<div class="w-full h-full flex items-center justify-center text-gray-500 bg-white">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-2 w-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>`
+              }
+            </div>
+            <div class="text-xs">
+              <span class="font-semibold">${reply.username}</span>
+              <span>${reply.content}</span>
+              <p class="text-xxs text-gray-500">${new Date().toLocaleString()}</p>
+            </div>
+          </div>
+          <button class="delete-reply text-red-500 text-xxs hover:underline" data-reply-id="${reply.reply_id}">Delete</button>
+        </div>
+        `;
+
+        const repliesContainer = document.getElementById('replies-' + commentId);
+        repliesContainer.insertAdjacentHTML('beforeend', replyHTML);
+        input.value = '';
+
+        // Hide the reply form after submission
+        document.getElementById('reply-form-' + commentId).classList.add('hidden');
+        }
+        });
+        });
+        });
+
+        // Handle reply deletion
+        document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('delete-reply')) {
+        if (confirm('Are you sure you want to delete this reply?')) {
+        const replyId = e.target.dataset.replyId;
+
+        fetch('delete_reply.php?id=' + replyId + '&csrf_token=<?php echo urlencode($_SESSION["csrf_token"]); ?>', {
+        method: 'GET'
+        })
+        .then(response => response.json())
+        .then(data => {
+        if (data.success) {
+        // Remove the reply from the DOM
+        document.getElementById('reply-' + replyId).remove();
+        } else {
+        alert('Error: ' + data.message);
+        }
+        })
+        .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while deleting the reply');
+        });
+        }
+        }
+        });
 
 </html>
