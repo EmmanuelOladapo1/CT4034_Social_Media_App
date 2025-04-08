@@ -15,6 +15,7 @@ $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
 <!DOCTYPE html>
 <html lang="en">
 
+
 <head>
   <meta charset="UTF-8">
   <title>Feed</title>
@@ -29,27 +30,133 @@ $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
     <div class="container mx-auto flex justify-between items-center">
       <a href="feed.php" class="text-2xl font-bold">SocialNet</a>
 
-      <div class="flex items-center space-x-4">
-        <a href="profile.php" class="flex items-center space-x-2">
-          <div class="w-8 h-8 rounded-full overflow-hidden bg-gray-300">
-            <?php if ($current_user['profile_image']): ?>
-              <img src="<?php echo htmlspecialchars($current_user['profile_image']); ?>" class="w-full h-full object-cover" alt="Profile">
-            <?php else: ?>
-              <div class="w-full h-full flex items-center justify-center text-gray-500 bg-white">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </div>
-            <?php endif; ?>
-          </div>
-          <span><?php echo htmlspecialchars($current_user['username']); ?></span>
-        </a>
-        <a href="auth/logout.php" class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600">Logout</a>
+      <!-- Search Bar -->
+      <div class="flex-grow mx-10">
+        <form action="feed.php" method="GET" class="flex">
+          <input type="text" name="search" value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>"
+            placeholder="Search for users or posts..."
+            class="w-full px-4 py-2 rounded-l text-gray-800">
+          <select name="search_type" class="px-3 py-2 bg-gray-200 text-gray-800">
+            <option value="all" <?php echo (!isset($_GET['search_type']) || $_GET['search_type'] == 'all') ? 'selected' : ''; ?>>All</option>
+            <option value="users" <?php echo (isset($_GET['search_type']) && $_GET['search_type'] == 'users') ? 'selected' : ''; ?>>Users</option>
+            <option value="posts" <?php echo (isset($_GET['search_type']) && $_GET['search_type'] == 'posts') ? 'selected' : ''; ?>>Posts</option>
+          </select>
+          <button type="submit" class="bg-blue-700 px-4 py-2 rounded-r hover:bg-blue-800">
+            Search
+          </button>
+        </form>
       </div>
-    </div>
   </nav>
 
   <div class="container mx-auto p-4 mt-4">
+    <!-- Search Results Section -->
+    <?php if (!empty($search_query)): ?>
+      <div class="bg-white p-4 rounded-lg shadow mb-4">
+        <h2 class="text-xl font-bold mb-3">Search Results for "<?php echo htmlspecialchars($search_query); ?>"</h2>
+
+        <?php
+        // Search for users
+        if ($search_type == 'all' || $search_type == 'users') {
+          $user_stmt = $conn->prepare("SELECT user_id, username, profile_image FROM users
+                                      WHERE username LIKE ? OR email LIKE ?
+                                      ORDER BY username ASC");
+          $searchPattern = "%{$search_query}%";
+          $user_stmt->execute([$searchPattern, $searchPattern]);
+          $users = $user_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+          if (!empty($users)) {
+            echo "<div class='mb-6'>";
+            echo "<h3 class='text-lg font-semibold mb-2'>Users</h3>";
+            echo "<div class='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>";
+
+            foreach ($users as $user) {
+              echo "<div class='flex items-center p-3 border rounded hover:bg-gray-50'>";
+
+              // User avatar
+              echo "<div class='w-10 h-10 rounded-full overflow-hidden bg-gray-300 mr-3'>";
+              if ($user['profile_image']) {
+                echo "<img src='" . htmlspecialchars($user['profile_image']) . "' class='w-full h-full object-cover' alt='Profile'>";
+              } else {
+                echo "<div class='w-full h-full flex items-center justify-center text-gray-500 bg-white'>";
+                echo "<svg xmlns='http://www.w3.org/2000/svg' class='h-6 w-6' fill='none' viewBox='0 0 24 24' stroke='currentColor'>";
+                echo "<path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' />";
+                echo "</svg>";
+                echo "</div>";
+              }
+              echo "</div>";
+
+              echo "<div>";
+              echo "<a href='profile.php?id=" . $user['user_id'] . "' class='font-medium text-blue-600 hover:underline'>" . htmlspecialchars($user['username']) . "</a>";
+              echo "</div>";
+              echo "</div>";
+            }
+
+            echo "</div>"; // End grid
+            echo "</div>"; // End users section
+          } else if ($search_type == 'users') {
+            echo "<p class='text-gray-500 mb-4'>No users found matching your search.</p>";
+          }
+        }
+
+        // Search for posts
+        if ($search_type == 'all' || $search_type == 'posts') {
+          $post_stmt = $conn->prepare("SELECT p.*, u.username, u.profile_image,
+                                      (SELECT COUNT(*) FROM likes WHERE post_id = p.post_id) as like_count
+                                      FROM posts p
+                                      JOIN users u ON p.user_id = u.user_id
+                                      WHERE p.content LIKE ?
+                                      ORDER BY p.created_at DESC");
+          $post_stmt->execute(["%{$search_query}%"]);
+          $posts = $post_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+          if (!empty($posts)) {
+            echo "<div>";
+            echo "<h3 class='text-lg font-semibold mb-2'>Posts</h3>";
+
+            foreach ($posts as $post) {
+              echo "<div class='p-3 border rounded mb-3 hover:bg-gray-50'>";
+              echo "<div class='flex items-center mb-2'>";
+
+              // User avatar
+              echo "<div class='w-8 h-8 rounded-full overflow-hidden bg-gray-300 mr-2'>";
+              if ($post['profile_image']) {
+                echo "<img src='" . htmlspecialchars($post['profile_image']) . "' class='w-full h-full object-cover' alt='Profile'>";
+              } else {
+                echo "<div class='w-full h-full flex items-center justify-center text-gray-500 bg-white'>";
+                echo "<svg xmlns='http://www.w3.org/2000/svg' class='h-5 w-5' fill='none' viewBox='0 0 24 24' stroke='currentColor'>";
+                echo "<path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' />";
+                echo "</svg>";
+                echo "</div>";
+              }
+              echo "</div>";
+
+              echo "<p class='font-medium'>" . htmlspecialchars($post['username']) . "</p>";
+              echo "</div>";
+
+              // Post content with search term highlighted
+              $highlighted = preg_replace("/(" . preg_quote($search_query, '/') . ")/i", '<span class=\"bg-yellow-200\">$1</span>', htmlspecialchars($post['content']));
+              echo "<p class='mb-2'>" . $highlighted . "</p>";
+
+              echo "<a href='feed.php#post-" . $post['post_id'] . "' class='text-blue-600 hover:underline text-sm'>View full post</a>";
+              echo "</div>";
+            }
+
+            echo "</div>"; // End posts section
+          } else if ($search_type == 'posts') {
+            echo "<p class='text-gray-500 mb-4'>No posts found matching your search.</p>";
+          }
+        }
+
+        // No results at all
+        if (($search_type == 'all' && empty($users) && empty($posts)) ||
+          ($search_type == 'users' && empty($users)) ||
+          ($search_type == 'posts' && empty($posts))
+        ) {
+          echo "<p class='text-gray-500'>No results found. Try a different search term.</p>";
+        }
+        ?>
+      </div>
+    <?php endif; ?>
     <!-- Post Form -->
     <div class="bg-white p-4 rounded-lg shadow mb-4">
       <form action="process_post.php" method="POST" enctype="multipart/form-data" class="space-y-4">
