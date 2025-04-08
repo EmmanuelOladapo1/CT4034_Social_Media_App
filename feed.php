@@ -16,6 +16,7 @@ $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
 <html lang="en">
 
 
+
 <head>
   <meta charset="UTF-8">
   <title>Feed</title>
@@ -31,21 +32,44 @@ $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
       <a href="feed.php" class="text-2xl font-bold">SocialNet</a>
 
       <!-- Search Bar -->
-      <div class="flex-grow mx-10">
-        <form action="feed.php" method="GET" class="flex">
-          <input type="text" name="search" value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>"
-            placeholder="Search for users or posts..."
-            class="w-full px-4 py-2 rounded-l text-gray-800">
-          <select name="search_type" class="px-3 py-2 bg-gray-200 text-gray-800">
-            <option value="all" <?php echo (!isset($_GET['search_type']) || $_GET['search_type'] == 'all') ? 'selected' : ''; ?>>All</option>
-            <option value="users" <?php echo (isset($_GET['search_type']) && $_GET['search_type'] == 'users') ? 'selected' : ''; ?>>Users</option>
-            <option value="posts" <?php echo (isset($_GET['search_type']) && $_GET['search_type'] == 'posts') ? 'selected' : ''; ?>>Posts</option>
-          </select>
-          <button type="submit" class="bg-blue-700 px-4 py-2 rounded-r hover:bg-blue-800">
-            Search
-          </button>
-        </form>
+    </div>
+    <!-- User Profile Menu -->
+    <div class="flex items-center">
+      <div class="relative">
+        <button id="profileDropdown" class="flex items-center ml-4">
+          <div class="w-10 h-10 rounded-full overflow-hidden bg-gray-300">
+            <?php if ($current_user['profile_image']): ?>
+              <img src="<?php echo htmlspecialchars($current_user['profile_image']); ?>" class="w-full h-full object-cover" alt="Profile">
+            <?php else: ?>
+              <div class="w-full h-full flex items-center justify-center text-gray-500 bg-white">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+            <?php endif; ?>
+          </div>
+        </button>
+        <div id="profileMenu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10">
+          <a href="profile.php?id=<?php echo $_SESSION['user_id']; ?>" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">My Profile</a>
+          <a href="messages.php" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Messages</a>
+          <a href="settings.php" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Settings</a>
+          <a href="auth/logout.php" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Logout</a>
+        </div>
       </div>
+    </div>
+    </div>
+  </nav>
+  <select name="search_type" class="px-3 py-2 bg-gray-200 text-gray-800">
+    <option value="all" <?php echo (!isset($_GET['search_type']) || $_GET['search_type'] == 'all') ? 'selected' : ''; ?>>All</option>
+    <option value="users" <?php echo (isset($_GET['search_type']) && $_GET['search_type'] == 'users') ? 'selected' : ''; ?>>Users</option>
+    <option value="posts" <?php echo (isset($_GET['search_type']) && $_GET['search_type'] == 'posts') ? 'selected' : ''; ?>>Posts</option>
+    <option value="user_posts" <?php echo (isset($_GET['search_type']) && $_GET['search_type'] == 'user_posts') ? 'selected' : ''; ?>>User Posts</option>
+  </select>
+  <button type="submit" class="bg-blue-700 px-4 py-2 rounded-r hover:bg-blue-800">
+    Search
+  </button>
+  </form>
+  </div>
   </nav>
 
   <div class="container mx-auto p-4 mt-4">
@@ -147,10 +171,58 @@ $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
           }
         }
 
+        // Search for user posts
+        if ($search_type == 'user_posts' && !empty($search_query)) {
+          $user_post_stmt = $conn->prepare("SELECT p.*, u.username, u.profile_image,
+                                          (SELECT COUNT(*) FROM likes WHERE post_id = p.post_id) as like_count
+                                          FROM posts p
+                                          JOIN users u ON p.user_id = u.user_id
+                                          WHERE u.username LIKE ?
+                                          ORDER BY p.created_at DESC");
+          $user_post_stmt->execute(["%{$search_query}%"]);
+          $user_posts = $user_post_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+          if (!empty($user_posts)) {
+            echo "<div>";
+            echo "<h3 class='text-lg font-semibold mb-2'>Posts by users matching '" . htmlspecialchars($search_query) . "'</h3>";
+
+            foreach ($user_posts as $post) {
+              echo "<div class='p-3 border rounded mb-3 hover:bg-gray-50'>";
+              echo "<div class='flex items-center mb-2'>";
+
+              // User avatar
+              echo "<div class='w-8 h-8 rounded-full overflow-hidden bg-gray-300 mr-2'>";
+              if ($post['profile_image']) {
+                echo "<img src='" . htmlspecialchars($post['profile_image']) . "' class='w-full h-full object-cover' alt='Profile'>";
+              } else {
+                echo "<div class='w-full h-full flex items-center justify-center text-gray-500 bg-white'>";
+                echo "<svg xmlns='http://www.w3.org/2000/svg' class='h-5 w-5' fill='none' viewBox='0 0 24 24' stroke='currentColor'>";
+                echo "<path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' />";
+                echo "</svg>";
+                echo "</div>";
+              }
+              echo "</div>";
+
+              echo "<p class='font-medium'>" . htmlspecialchars($post['username']) . "</p>";
+              echo "</div>";
+
+              echo "<p class='mb-2'>" . htmlspecialchars($post['content']) . "</p>";
+
+              echo "<a href='feed.php#post-" . $post['post_id'] . "' class='text-blue-600 hover:underline text-sm'>View full post</a>";
+              echo "</div>";
+            }
+
+            echo "</div>"; // End user posts section
+          } else {
+            echo "<p class='text-gray-500 mb-4'>No posts found from users matching your search.</p>";
+          }
+        }
+
         // No results at all
         if (($search_type == 'all' && empty($users) && empty($posts)) ||
           ($search_type == 'users' && empty($users)) ||
-          ($search_type == 'posts' && empty($posts))
+          ($search_type == 'posts' && empty($posts)) ||
+          ($search_type == 'user_posts' && empty($user_posts))
         ) {
           echo "<p class='text-gray-500'>No results found. Try a different search term.</p>";
         }
@@ -280,25 +352,60 @@ $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
       echo "</form>";
       echo "</div>";
 
-      // Display comments
+      // Display comments with reply functionality
       echo "<div class='comments-section mt-2 ml-4 text-sm'>";
-      $commentStmt = $conn->prepare("SELECT c.*, u.username FROM comments c JOIN users u ON c.user_id = u.user_id WHERE c.post_id = ? ORDER BY c.created_at ASC");
+      $commentStmt = $conn->prepare("SELECT c.*, u.username FROM comments c JOIN users u ON c.user_id = u.user_id WHERE c.post_id = ? AND c.parent_id IS NULL ORDER BY c.created_at ASC");
       $commentStmt->execute([$post['post_id']]);
       while ($comment = $commentStmt->fetch(PDO::FETCH_ASSOC)) {
-        echo "<div class='comment p-2 mb-1 bg-gray-50 rounded flex justify-between' id='comment-" . $comment['comment_id'] . "'>";
+        echo "<div class='comment p-2 mb-1 bg-gray-50 rounded' id='comment-" . $comment['comment_id'] . "'>";
+        echo "<div class='flex justify-between'>";
         echo "<div>";
         echo "<strong>" . htmlspecialchars($comment['username']) . ":</strong> ";
         echo htmlspecialchars($comment['content']);
         echo "</div>";
 
+        echo "<div class='flex space-x-2'>";
+        echo "<button class='reply-toggle text-blue-500 text-xs hover:underline' data-comment-id='" . $comment['comment_id'] . "'>Reply</button>";
+
         // Only show delete button if comment belongs to current user
         if ($comment['user_id'] == $_SESSION['user_id']) {
           echo "<button class='delete-comment text-red-500 text-xs hover:underline' data-comment-id='" . $comment['comment_id'] . "'>Delete</button>";
         }
-
         echo "</div>";
+        echo "</div>";
+
+        // Add reply form (hidden by default)
+        echo "<div class='reply-form hidden mt-2 ml-4' id='reply-form-" . $comment['comment_id'] . "'>";
+        echo "<form class='flex' data-parent-id='" . $comment['comment_id'] . "' data-post-id='" . $post['post_id'] . "'>";
+        echo "<input type='text' name='reply_content' placeholder='Write a reply...' class='w-full p-1 text-xs border rounded-l'>";
+        echo "<button type='submit' class='bg-blue-500 text-white px-2 py-1 text-xs rounded-r'>Reply</button>";
+        echo "</form>";
+        echo "</div>";
+
+        // Display replies to this comment
+        $replyStmt = $conn->prepare("SELECT c.*, u.username FROM comments c JOIN users u ON c.user_id = u.user_id WHERE c.parent_id = ? ORDER BY c.created_at ASC");
+        $replyStmt->execute([$comment['comment_id']]);
+
+        echo "<div class='replies ml-4 mt-1' id='replies-" . $comment['comment_id'] . "'>";
+        while ($reply = $replyStmt->fetch(PDO::FETCH_ASSOC)) {
+          echo "<div class='reply p-1 mb-1 bg-gray-100 rounded flex justify-between' id='comment-" . $reply['comment_id'] . "'>";
+          echo "<div>";
+          echo "<strong>" . htmlspecialchars($reply['username']) . ":</strong> ";
+          echo htmlspecialchars($reply['content']);
+          echo "</div>";
+
+          // Only show delete button if reply belongs to current user
+          if ($reply['user_id'] == $_SESSION['user_id']) {
+            echo "<button class='delete-comment text-red-500 text-xs hover:underline' data-comment-id='" . $reply['comment_id'] . "'>Delete</button>";
+          }
+
+          echo "</div>";
+        }
+        echo "</div>"; // End replies
+
+        echo "</div>"; // End comment
       }
-      echo "</div>";
+      echo "</div>"; // End comments section
     }
     ?>
   </div>
@@ -431,6 +538,70 @@ $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
           }
         }
       });
+    });
+    // Profile dropdown toggle
+    const profileDropdown = document.getElementById('profileDropdown');
+    const profileMenu = document.getElementById('profileMenu');
+
+    if (profileDropdown && profileMenu) {
+      profileDropdown.addEventListener('click', function() {
+        profileMenu.classList.toggle('hidden');
+      });
+
+      // Close the dropdown when clicking outside
+      document.addEventListener('click', function(event) {
+        if (!profileDropdown.contains(event.target) && !profileMenu.contains(event.target)) {
+          profileMenu.classList.add('hidden');
+        }
+      });
+    }
+
+    // Toggle reply forms
+    document.querySelectorAll('.reply-toggle').forEach(button => {
+      button.addEventListener('click', function() {
+        const commentId = this.dataset.commentId;
+        const replyForm = document.getElementById('reply-form-' + commentId);
+        replyForm.classList.toggle('hidden');
+      });
+    });
+
+    // Handle reply submissions
+    document.addEventListener('submit', function(e) {
+      if (e.target.dataset.parentId) {
+        e.preventDefault();
+        const parentId = e.target.dataset.parentId;
+        const postId = e.target.dataset.postId;
+        const input = e.target.querySelector('input[name="reply_content"]');
+        const content = input.value.trim();
+
+        if (!content) return;
+
+        fetch('add_comment.php', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'post_id=' + postId + '&content=' + encodeURIComponent(content) + '&parent_id=' + parentId
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              const reply = data.comment;
+              const replyHTML = `
+              <div class="reply p-1 mb-1 bg-gray-100 rounded flex justify-between" id="comment-${reply.comment_id}">
+                <div>
+                  <strong>${reply.username}:</strong> ${reply.content}
+                </div>
+                <button class="delete-comment text-red-500 text-xs hover:underline" data-comment-id="${reply.comment_id}">Delete</button>
+              </div>
+            `;
+              const repliesContainer = document.getElementById('replies-' + parentId);
+              repliesContainer.innerHTML += replyHTML;
+              input.value = '';
+              document.getElementById('reply-form-' + parentId).classList.add('hidden');
+            }
+          });
+      }
     });
   </script>
 </body>

@@ -11,6 +11,7 @@ if (!isset($_SESSION['user_id']) || !isset($_POST['post_id']) || !isset($_POST['
 $post_id = $_POST['post_id'];
 $user_id = $_SESSION['user_id'];
 $content = trim($_POST['content']);
+$parent_id = isset($_POST['parent_id']) ? $_POST['parent_id'] : null;
 
 if (empty($content)) {
   http_response_code(400);
@@ -19,8 +20,8 @@ if (empty($content)) {
 }
 
 try {
-  $stmt = $conn->prepare("INSERT INTO comments (post_id, user_id, content) VALUES (?, ?, ?)");
-  $stmt->execute([$post_id, $user_id, $content]);
+  $stmt = $conn->prepare("INSERT INTO comments (post_id, user_id, content, parent_id, created_at) VALUES (?, ?, ?, ?, NOW())");
+  $stmt->execute([$post_id, $user_id, $content, $parent_id]);
 
   // Get the comment with username
   $comment_id = $conn->lastInsertId();
