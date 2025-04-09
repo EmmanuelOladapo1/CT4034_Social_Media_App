@@ -26,17 +26,36 @@ $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
 </head>
 
 <body class="bg-gray-100">
-  <!-- Navigation bar -->
+  <!-- Navigation bar with centered search and profile icon on right -->
   <nav class="bg-blue-600 text-white p-4">
-    <div class="container mx-auto flex justify-between items-center">
-      <a href="feed.php" class="text-2xl font-bold">SocialNet</a>
+    <div class="container mx-auto flex items-center justify-between">
+      <!-- Logo on left -->
+      <div class="flex items-center">
+        <img src="path/to/your/logo.png" alt="Logo" class="h-10 w-10 mr-2">
+        <a href="feed.php" class="text-2xl font-bold">SocialNet</a>
+      </div>
 
-      <!-- Search Bar -->
-    </div>
-    <!-- User Profile Menu -->
-    <div class="flex items-center">
+      <!-- Search Bar in center -->
+      <div class="flex-grow max-w-xl mx-auto">
+        <form action="feed.php" method="GET" class="flex">
+          <select name="search_type" class="px-3 py-2 bg-gray-200 text-gray-800 rounded-l">
+            <option value="all" <?php echo (!isset($_GET['search_type']) || $_GET['search_type'] == 'all') ? 'selected' : ''; ?>>All</option>
+            <option value="users" <?php echo (isset($_GET['search_type']) && $_GET['search_type'] == 'users') ? 'selected' : ''; ?>>Users</option>
+            <option value="posts" <?php echo (isset($_GET['search_type']) && $_GET['search_type'] == 'posts') ? 'selected' : ''; ?>>Posts</option>
+            <option value="user_posts" <?php echo (isset($_GET['search_type']) && $_GET['search_type'] == 'user_posts') ? 'selected' : ''; ?>>User Posts</option>
+          </select>
+          <input type="text" name="search" value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>"
+            placeholder="Search for users or posts..."
+            class="w-full px-4 py-2 text-gray-800">
+          <button type="submit" class="bg-blue-700 px-4 py-2 rounded-r hover:bg-blue-800">
+            Search
+          </button>
+        </form>
+      </div>
+
+      <!-- User Profile Icon on right -->
       <div class="relative">
-        <button id="profileDropdown" class="flex items-center ml-4">
+        <button id="profileDropdown" class="flex items-center">
           <div class="w-10 h-10 rounded-full overflow-hidden bg-gray-300">
             <?php if ($current_user['profile_image']): ?>
               <img src="<?php echo htmlspecialchars($current_user['profile_image']); ?>" class="w-full h-full object-cover" alt="Profile">
@@ -56,7 +75,6 @@ $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
           <a href="auth/logout.php" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Logout</a>
         </div>
       </div>
-    </div>
     </div>
   </nav>
   <select name="search_type" class="px-3 py-2 bg-gray-200 text-gray-800">
@@ -539,22 +557,26 @@ $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
         }
       });
     });
+
     // Profile dropdown toggle
-    const profileDropdown = document.getElementById('profileDropdown');
-    const profileMenu = document.getElementById('profileMenu');
+    document.addEventListener('DOMContentLoaded', function() {
+      const profileDropdown = document.getElementById('profileDropdown');
+      const profileMenu = document.getElementById('profileMenu');
 
-    if (profileDropdown && profileMenu) {
-      profileDropdown.addEventListener('click', function() {
-        profileMenu.classList.toggle('hidden');
-      });
+      if (profileDropdown && profileMenu) {
+        profileDropdown.addEventListener('click', function() {
+          profileMenu.classList.toggle('hidden');
+        });
 
-      // Close the dropdown when clicking outside
-      document.addEventListener('click', function(event) {
-        if (!profileDropdown.contains(event.target) && !profileMenu.contains(event.target)) {
-          profileMenu.classList.add('hidden');
-        }
-      });
-    }
+        // Close the dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+          if (!profileDropdown.contains(event.target) && !profileMenu.contains(event.target)) {
+            profileMenu.classList.add('hidden');
+          }
+        });
+      }
+    });
+
 
     // Toggle reply forms
     document.querySelectorAll('.reply-toggle').forEach(button => {
