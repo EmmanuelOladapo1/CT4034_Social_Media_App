@@ -77,18 +77,6 @@ $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
       </div>
     </div>
   </nav>
-  <select name="search_type" class="px-3 py-2 bg-gray-200 text-gray-800">
-    <option value="all" <?php echo (!isset($_GET['search_type']) || $_GET['search_type'] == 'all') ? 'selected' : ''; ?>>All</option>
-    <option value="users" <?php echo (isset($_GET['search_type']) && $_GET['search_type'] == 'users') ? 'selected' : ''; ?>>Users</option>
-    <option value="posts" <?php echo (isset($_GET['search_type']) && $_GET['search_type'] == 'posts') ? 'selected' : ''; ?>>Posts</option>
-    <option value="user_posts" <?php echo (isset($_GET['search_type']) && $_GET['search_type'] == 'user_posts') ? 'selected' : ''; ?>>User Posts</option>
-  </select>
-  <button type="submit" class="bg-blue-700 px-4 py-2 rounded-r hover:bg-blue-800">
-    Search
-  </button>
-  </form>
-  </div>
-  </nav>
 
   <div class="container mx-auto p-4 mt-4">
     <!-- Search Results Section -->
@@ -467,7 +455,6 @@ $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
       }
     }
 
-    // Handle likes and comments
     document.addEventListener('DOMContentLoaded', function() {
       // Handle likes
       document.querySelectorAll('.like-button').forEach(button => {
@@ -516,13 +503,13 @@ $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
                 const comment = data.comment;
                 // Updated HTML structure to match existing comments with delete button
                 const commentHTML = `
-                  <div class="comment p-2 mb-1 bg-gray-50 rounded flex justify-between" id="comment-${comment.comment_id}">
-                    <div>
-                      <strong>${comment.username}:</strong> ${comment.content}
-                    </div>
-                    <button class="delete-comment text-red-500 text-xs hover:underline" data-comment-id="${comment.comment_id}">Delete</button>
-                  </div>
-                `;
+            <div class="comment p-2 mb-1 bg-gray-50 rounded flex justify-between" id="comment-${comment.comment_id}">
+              <div>
+                <strong>${comment.username}:</strong> ${comment.content}
+              </div>
+              <button class="delete-comment text-red-500 text-xs hover:underline" data-comment-id="${comment.comment_id}">Delete</button>
+            </div>
+          `;
                 const commentsSection = this.parentElement.nextElementSibling;
                 commentsSection.innerHTML += commentHTML;
                 input.value = '';
@@ -531,7 +518,7 @@ $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
         });
       });
 
-      // Handle comment deletion (moved outside the other event listener)
+      // Handle comment deletion
       document.addEventListener('click', function(e) {
         if (e.target.classList.contains('delete-comment')) {
           if (confirm('Are you sure you want to delete this comment?')) {
@@ -556,10 +543,8 @@ $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
           }
         }
       });
-    });
 
-    // Profile dropdown toggle
-    document.addEventListener('DOMContentLoaded', function() {
+      // Profile dropdown toggle
       const profileDropdown = document.getElementById('profileDropdown');
       const profileMenu = document.getElementById('profileMenu');
 
@@ -575,55 +560,54 @@ $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
           }
         });
       }
-    });
 
-
-    // Toggle reply forms
-    document.querySelectorAll('.reply-toggle').forEach(button => {
-      button.addEventListener('click', function() {
-        const commentId = this.dataset.commentId;
-        const replyForm = document.getElementById('reply-form-' + commentId);
-        replyForm.classList.toggle('hidden');
+      // Toggle reply forms
+      document.querySelectorAll('.reply-toggle').forEach(button => {
+        button.addEventListener('click', function() {
+          const commentId = this.dataset.commentId;
+          const replyForm = document.getElementById('reply-form-' + commentId);
+          replyForm.classList.toggle('hidden');
+        });
       });
-    });
 
-    // Handle reply submissions
-    document.addEventListener('submit', function(e) {
-      if (e.target.dataset.parentId) {
-        e.preventDefault();
-        const parentId = e.target.dataset.parentId;
-        const postId = e.target.dataset.postId;
-        const input = e.target.querySelector('input[name="reply_content"]');
-        const content = input.value.trim();
+      // Handle reply submissions
+      document.addEventListener('submit', function(e) {
+        if (e.target.dataset.parentId) {
+          e.preventDefault();
+          const parentId = e.target.dataset.parentId;
+          const postId = e.target.dataset.postId;
+          const input = e.target.querySelector('input[name="reply_content"]');
+          const content = input.value.trim();
 
-        if (!content) return;
+          if (!content) return;
 
-        fetch('add_comment.php', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: 'post_id=' + postId + '&content=' + encodeURIComponent(content) + '&parent_id=' + parentId
-          })
-          .then(response => response.json())
-          .then(data => {
-            if (data.success) {
-              const reply = data.comment;
-              const replyHTML = `
-              <div class="reply p-1 mb-1 bg-gray-100 rounded flex justify-between" id="comment-${reply.comment_id}">
-                <div>
-                  <strong>${reply.username}:</strong> ${reply.content}
-                </div>
-                <button class="delete-comment text-red-500 text-xs hover:underline" data-comment-id="${reply.comment_id}">Delete</button>
-              </div>
-            `;
-              const repliesContainer = document.getElementById('replies-' + parentId);
-              repliesContainer.innerHTML += replyHTML;
-              input.value = '';
-              document.getElementById('reply-form-' + parentId).classList.add('hidden');
-            }
-          });
-      }
+          fetch('add_comment.php', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+              },
+              body: 'post_id=' + postId + '&content=' + encodeURIComponent(content) + '&parent_id=' + parentId
+            })
+            .then(response => response.json())
+            .then(data => {
+              if (data.success) {
+                const reply = data.comment;
+                const replyHTML = `
+          <div class="reply p-1 mb-1 bg-gray-100 rounded flex justify-between" id="comment-${reply.comment_id}">
+            <div>
+              <strong>${reply.username}:</strong> ${reply.content}
+            </div>
+            <button class="delete-comment text-red-500 text-xs hover:underline" data-comment-id="${reply.comment_id}">Delete</button>
+          </div>
+        `;
+                const repliesContainer = document.getElementById('replies-' + parentId);
+                repliesContainer.innerHTML += replyHTML;
+                input.value = '';
+                document.getElementById('reply-form-' + parentId).classList.add('hidden');
+              }
+            });
+        }
+      });
     });
   </script>
 </body>
