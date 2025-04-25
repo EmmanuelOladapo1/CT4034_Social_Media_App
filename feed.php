@@ -1,3 +1,12 @@
+<!-- Debug info -->
+<div style="display:none">
+  <?php
+  echo "GET parameters: ";
+  print_r($_GET);
+  echo "<br>Current URI: " . $_SERVER['REQUEST_URI'];
+  ?>
+</div>
+
 <?php
 session_start();
 require_once 'config/database.php';
@@ -5,6 +14,23 @@ require_once 'config/database.php';
 if (!isset($_SESSION['user_id'])) {
   header("Location: auth/login.php");
   exit();
+}
+
+// Handle live search
+$search_query = '';
+if (isset($_GET['live_search'])) {
+  $search_query = trim($_GET['live_search']);
+
+  // If it's an AJAX request, use different query
+  if (!empty($search_query)) {
+    $stmt = $conn->prepare("SELECT p.*, u.username, u.profile_image,
+                           (SELECT COUNT(*) FROM likes WHERE post_id = p.post_id) as like_count
+                           FROM posts p
+                           JOIN users u ON p.user_id = u.user_id
+                           WHERE p.content LIKE ?
+                           ORDER BY p.created_at DESC");
+    $stmt->execute(["%{$search_query}%"]);
+  }
 }
 
 // Get current user data
@@ -34,19 +60,13 @@ $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
         <a href="feed.php" class="text-2xl font-bold">SocialNet</a>
       </div>
 
-      <!-- Search input with rounded left border -->
+      <!-- Live Search Bar -->
       <div class="flex-grow max-w-xl mx-auto">
-        <form action="feed.php" method="GET" class="flex">
-          <input type="text" name="search" value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>"
-            placeholder="Search for users or posts..."
-            class="w-full px-4 py-2 text-gray-800">
-          <input type="text" name="search" value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>"
-            placeholder="Search posts..."
-            class="w-full px-4 py-2 rounded-l text-gray-800 border-2 border-gray-200 focus:border-blue-500 focus:outline-none">
-          <button type="submit" class="bg-blue-700 px-4 py-2 rounded-r hover:bg-blue-800">
-            Search
-          </button>
-        </form>
+        <div class="relative">
+          <input type="text" id="liveSearch" placeholder="Search posts..."
+            class="w-full px-4 py-2 rounded text-gray-800 border-2 border-gray-200 focus:border-blue-500 focus:outline-none">
+          <div id="searchDebug" class="absolute right-2 top-2 text-xs text-gray-400"></div>
+        </div>
       </div>
 
       <!-- User Profile Icon on right -->
@@ -76,92 +96,7 @@ $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
 
   <div class="container mx-auto p-4 mt-4">
 
-    <!-- Search Results Section -->
-    <?php if (!empty($search_query)): ?>
-      <div class="bg-white p-4 rounded-lg shadow mb-4">
-        <h2 class="text-xl font-bold mb-3">Search Results for "<?php echo htmlspecialchars($search_query); ?>"</h2>
 
-        <?php
-        // Get search query from GET parameters
-        $search_query = isset($_GET['search']) ? trim($_GET['search']) : '';
-
-        if (!empty($search_query)) {
-          // Prepare search query for posts
-          $post_stmt = $conn->prepare("SELECT p.*, u.username, u.profile_image,
-                                       (SELECT COUNT(*) FROM likes WHERE post_id = p.post_id) as like_count,
-                                       (SELECT COUNT(*) FROM comments WHERE post_id = p.post_id) as comment_count
-                                       FROM posts p
-                                       JOIN users u ON p.user_id = u.user_id
-                                       WHERE p.content LIKE ? OR u.username LIKE ?
-                                       ORDER BY p.created_at DESC");
-
-          $searchPattern = "%{$search_query}%";
-          $post_stmt->execute([$searchPattern, $searchPattern]);
-          $search_results = $post_stmt->fetchAll(PDO::FETCH_ASSOC);
-
-          // Display search results section
-          if (!empty($search_results)) {
-            echo "<div class='space-y-4'>";
-            foreach ($search_results as $post) {
-              // Highlight the search term in post content
-              $highlighted_content = preg_replace(
-                "/(" . preg_quote($search_query, '/') . ")/i",
-                '<span class="bg-yellow-200">$1</span>',
-                htmlspecialchars($post['content'])
-              );
-
-              echo "<div class='p-4 border rounded-lg hover:bg-gray-50 transition'>";
-              echo "<div class='flex items-center mb-2'>";
-
-              // User avatar
-              echo "<div class='w-10 h-10 rounded-full overflow-hidden bg-gray-300 mr-3'>";
-              if ($post['profile_image']) {
-                echo "<img src='" . htmlspecialchars($post['profile_image']) . "' class='w-full h-full object-cover' alt='Profile'>";
-              } else {
-                echo "<div class='w-full h-full flex items-center justify-center text-gray-500 bg-white'>";
-                echo "<svg xmlns='http://www.w3.org/2000/svg' class='h-6 w-6' fill='none' viewBox='0 0 24 24' stroke='currentColor'>";
-                echo "<path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' />";
-                echo "</svg>";
-                echo "</div>";
-              }
-              echo "</div>";
-
-              echo "<div>";
-              echo "<a href='profile.php?id=" . $post['user_id'] . "' class='font-medium hover:underline'>" . htmlspecialchars($post['username']) . "</a>";
-              echo "<p class='text-xs text-gray-500'>" . date('M d, Y \a\t g:i a', strtotime($post['created_at'])) . "</p>";
-              echo "</div>";
-              echo "</div>";
-
-              // Post content with highlighted search term
-              echo "<div class='ml-12'>";
-              echo "<p class='mb-2'>" . $highlighted_content . "</p>";
-
-              // Post image (if exists)
-              if ($post['image_url']) {
-                echo "<div class='mt-2 mb-3'>";
-                echo "<img src='" . htmlspecialchars($post['image_url']) . "' class='max-w-full rounded-lg max-h-60 object-contain' alt='Post image'>";
-                echo "</div>";
-              }
-
-              // Post engagement metrics
-              echo "<div class='flex items-center text-sm text-gray-500 mt-2'>";
-              echo "<span class='mr-4'><strong>" . $post['like_count'] . "</strong> likes</span>";
-              echo "<span><strong>" . $post['comment_count'] . "</strong> comments</span>";
-              echo "</div>";
-
-              echo "<a href='feed.php#post-" . $post['post_id'] . "' class='inline-block mt-2 text-blue-600 hover:underline'>View full post</a>";
-              echo "</div>";
-              echo "</div>";
-            }
-            echo "</div>"; // end search results
-          } else {
-            echo "<p class='text-gray-500'>No posts found matching your search. Try different keywords.</p>";
-          }
-        }
-        ?>
-
-      </div>
-    <?php endif; ?>
     <!-- Post Form -->
     <div class="bg-white p-4 rounded-lg shadow mb-4">
       <form action="process_post.php" method="POST" enctype="multipart/form-data" class="space-y-4">
@@ -534,6 +469,42 @@ $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
               }
             });
         }
+      });
+    });
+  </script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const searchInput = document.getElementById('liveSearch');
+      const postsContainer = document.querySelector('.container');
+      const debugElement = document.getElementById('searchDebug');
+      let searchTimeout;
+
+      searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        const query = this.value.trim();
+
+        debugElement.textContent = `Searching: "${query}"`;
+
+        // Add a small delay to prevent too many requests
+        searchTimeout = setTimeout(() => {
+          fetch('feed.php?live_search=' + encodeURIComponent(query))
+            .then(response => response.text())
+            .then(html => {
+              const tempDiv = document.createElement('div');
+              tempDiv.innerHTML = html;
+
+              // Extract the posts container from the response
+              const newPosts = tempDiv.querySelector('.posts-container');
+              if (newPosts) {
+                document.querySelector('.posts-container').innerHTML = newPosts.innerHTML;
+                debugElement.textContent = `Found: ${document.querySelectorAll('.post-item').length} posts`;
+              }
+            })
+            .catch(error => {
+              console.error('Search error:', error);
+              debugElement.textContent = 'Search error';
+            });
+        }, 300);
       });
     });
   </script>
