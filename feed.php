@@ -16,23 +16,6 @@ if (!isset($_SESSION['user_id'])) {
   exit();
 }
 
-// Handle live search
-$search_query = '';
-if (isset($_GET['live_search'])) {
-  $search_query = trim($_GET['live_search']);
-
-  // If it's an AJAX request, use different query
-  if (!empty($search_query)) {
-    $stmt = $conn->prepare("SELECT p.*, u.username, u.profile_image,
-                           (SELECT COUNT(*) FROM likes WHERE post_id = p.post_id) as like_count
-                           FROM posts p
-                           JOIN users u ON p.user_id = u.user_id
-                           WHERE p.content LIKE ?
-                           ORDER BY p.created_at DESC");
-    $stmt->execute(["%{$search_query}%"]);
-  }
-}
-
 // Get current user data
 $stmt = $conn->prepare("SELECT * FROM users WHERE user_id = ?");
 $stmt->execute([$_SESSION['user_id']]);
@@ -60,13 +43,16 @@ $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
         <a href="feed.php" class="text-2xl font-bold">SocialNet</a>
       </div>
 
-      <!-- Live Search Bar -->
+      <!-- Simple Search Bar -->
       <div class="flex-grow max-w-xl mx-auto">
-        <div class="relative">
-          <input type="text" id="liveSearch" placeholder="Search posts..."
-            class="w-full px-4 py-2 rounded text-gray-800 border-2 border-gray-200 focus:border-blue-500 focus:outline-none">
-          <div id="searchDebug" class="absolute right-2 top-2 text-xs text-gray-400"></div>
-        </div>
+        <form action="feed.php" method="GET" class="flex">
+          <input type="text" name="search" value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search'], ENT_QUOTES, 'UTF-8') : ''; ?>"
+            placeholder="Search posts..."
+            class="w-full px-4 py-2 rounded-l text-gray-800 border-2 border-gray-200 focus:outline-none">
+          <button type="submit" class="bg-blue-600 px-4 py-2 rounded-r text-white hover:bg-blue-700">
+            Search
+          </button>
+        </form>
       </div>
 
       <!-- User Profile Icon on right -->
@@ -120,11 +106,34 @@ $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
     <!-- Display Posts -->
     <?php
     // Get posts with like counts
-    $stmt = $conn->query("SELECT p.*, u.username, u.profile_image,
-                          (SELECT COUNT(*) FROM likes WHERE post_id = p.post_id) as like_count
-                          FROM posts p
-                          JOIN users u ON p.user_id = u.user_id
-                          ORDER BY p.created_at DESC");
+    $search_query = isset($_GET['search']) ? trim($_GET['search']) : '';
+
+    if (!empty($search_query)) {
+      // If search query exists, filter posts
+      $stmt = $conn->prepare("SELECT p.*, u.username, u.profile_image,
+                        (SELECT COUNT(*) FROM likes WHERE post_id = p.post_id) as like_count
+                        FROM posts p
+                        JOIN users u ON p.user_id = u.user_id
+                        WHERE p.content LIKE ?
+                        ORDER BY p.created_at DESC");
+      $stmt->execute(["%{$search_query}%"]);
+
+      // Add a heading for search results
+      echo "<div class='bg-white p-4 rounded-lg shadow mb-4'>";
+      echo "<h2 class='text-xl font-bold mb-2'>Search Results for \"" . htmlspecialchars($search_query) . "\"</h2>";
+
+      if ($stmt->rowCount() === 0) {
+        echo "<p class='text-gray-500'>No posts found matching your search.</p>";
+      }
+      echo "</div>";
+    } else {
+      // No search, show all posts
+      $stmt = $conn->query("SELECT p.*, u.username, u.profile_image,
+                      (SELECT COUNT(*) FROM likes WHERE post_id = p.post_id) as like_count
+                      FROM posts p
+                      JOIN users u ON p.user_id = u.user_id
+                      ORDER BY p.created_at DESC");
+    }
 
     while ($post = $stmt->fetch(PDO::FETCH_ASSOC)) {
       echo "<div class='bg-white p-4 rounded-lg shadow mb-4'>";
