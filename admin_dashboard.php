@@ -2,15 +2,16 @@
 session_start();
 require_once 'config/database.php';
 
-// Check if user is admin
-$stmt = $conn->prepare("SELECT role FROM users WHERE user_id = ?");
-$stmt->execute([$_SESSION['user_id']]);
-$user_role = $stmt->fetchColumn();
-
-if (!isset($_SESSION['user_id']) || $user_role !== 'admin') {
-  header("Location: auth/login.php");
+// Check if admin is logged in
+if (!isset($_SESSION['admin_id']) || !isset($_SESSION['is_admin']) || $_SESSION['is_admin'] !== true) {
+  header("Location: admin_login.php");
   exit();
 }
+
+// Get admin information
+$stmt = $conn->prepare("SELECT * FROM admins WHERE admin_id = ?");
+$stmt->execute([$_SESSION['admin_id']]);
+$admin = $stmt->fetch(PDO::FETCH_ASSOC);
 
 // Handle delete user
 if (isset($_GET['delete_user'])) {
@@ -44,7 +45,7 @@ $stmt = $conn->prepare("SELECT COUNT(*) as post_count, user_id,
 $stmt->execute();
 $post_statistics = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Get reports
+// Get reports - using reported_id as shown in your database schema
 $stmt = $conn->prepare("SELECT r.*,
                       (SELECT username FROM users WHERE user_id = r.reporter_id) as reporter_name,
                       (SELECT username FROM users WHERE user_id = r.reported_id) as reported_name
@@ -52,6 +53,9 @@ $stmt = $conn->prepare("SELECT r.*,
                       ORDER BY created_at DESC");
 $stmt->execute();
 $reports = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Check if there was a successful deletion
+$deleted = isset($_GET['deleted']) && $_GET['deleted'] == 1;
 ?>
 
 <!DOCTYPE html>
@@ -66,9 +70,21 @@ $reports = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <body class="bg-gray-100">
   <div class="container mx-auto p-4">
     <div class="bg-white shadow-md rounded-lg p-6 mb-6">
-      <h1 class="text-2xl font-bold mb-4">Admin Dashboard</h1>
-      <a href="feed.php" class="text-blue-500 hover:underline">Back to Feed</a>
+      <div class="flex justify-between items-center">
+        <h1 class="text-2xl font-bold">Admin Dashboard</h1>
+        <div>
+          <span class="mr-4">Welcome, <?php echo htmlspecialchars($admin['username']); ?></span>
+          <a href="auth/logout.php?admin=1" class="text-red-500 hover:underline">Logout</a>
+        </div>
+      </div>
+      <a href="feed.php" class="text-blue-500 hover:underline">Back to Site</a>
     </div>
+
+    <?php if ($deleted): ?>
+      <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+        User has been successfully deleted.
+      </div>
+    <?php endif; ?>
 
     <!-- Post Statistics -->
     <div class="bg-white shadow-md rounded-lg p-6 mb-6">
