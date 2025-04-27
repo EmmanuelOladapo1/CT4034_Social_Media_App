@@ -67,8 +67,11 @@ $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
         </button>
         <div id="profileMenu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10">
           <a href="profile.php?id=<?php echo $_SESSION['user_id']; ?>" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">My Profile</a>
+          <a href="friends.php" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Friends</a>
           <a href="messages.php" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Messages</a>
-          <a href="users.php" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">View Users</a>
+          <a href="users.php" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Find Users</a>
+          <a href="blocked.php" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Blocked Users</a>
+          <a href="reports.php" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">My Reports</a>
           <a href="settings.php" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Settings</a>
           <?php if ($isAdmin): ?>
             <a href="admin_dashboard.php" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Admin Dashboard</a>
@@ -495,10 +498,39 @@ $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
           hoverCard.style.top = `${rect.bottom + window.scrollY + 5}px`;
           hoverCard.style.left = `${rect.left + window.scrollX}px`;
 
-          // Add content
-          hoverCard.innerHTML = `
-            <a href="profile.php?id=${userId}" class="block text-blue-600 hover:underline">View Profile</a>
-          `;
+          // Check if this is the current user
+          if (userId == '<?php echo $_SESSION['user_id']; ?>') {
+            hoverCard.innerHTML = `
+              <a href="profile.php?id=${userId}" class="block text-blue-600 hover:underline mb-1">View Profile</a>
+            `;
+          } else {
+            // Fetch friendship status
+            fetch(`check_friendship.php?user_id=${userId}`)
+              .then(response => response.json())
+              .then(data => {
+                let friendActionHtml = '';
+
+                if (data.is_friend) {
+                  friendActionHtml = `<a href="friends.php?action=remove&user_id=${userId}" class="block text-red-500 hover:underline mb-1">Remove Friend</a>`;
+                } else if (data.request_sent) {
+                  friendActionHtml = `<span class="block text-gray-500 mb-1">Friend Request Sent</span>`;
+                } else if (data.request_received) {
+                  friendActionHtml = `
+                    <a href="friends.php?action=accept&user_id=${userId}" class="block text-green-600 hover:underline mb-1">Accept Friend Request</a>
+                    <a href="friends.php?action=decline&user_id=${userId}" class="block text-red-500 hover:underline mb-1">Decline Friend Request</a>
+                  `;
+                } else {
+                  friendActionHtml = `<a href="friends.php?action=send_request&user_id=${userId}" class="block text-blue-600 hover:underline mb-1">Add Friend</a>`;
+                }
+
+                hoverCard.innerHTML = `
+                  <a href="profile.php?id=${userId}" class="block text-blue-600 hover:underline mb-1">View Profile</a>
+                  ${friendActionHtml}
+                  <a href="report_user.php?action=report&user_id=${userId}" class="block text-yellow-600 hover:underline mb-1">Report User</a>
+                  <a href="report_user.php?action=block&user_id=${userId}" class="block text-red-600 hover:underline">Block User</a>
+                `;
+              });
+          }
 
           document.body.appendChild(hoverCard);
 
