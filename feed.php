@@ -398,7 +398,6 @@ $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
         if (e.target.classList.contains('delete-comment')) {
           if (confirm('Are you sure you want to delete this comment?')) {
             const commentId = e.target.dataset.commentId;
-
             fetch('delete_comment.php?id=' + commentId, {
                 method: 'GET'
               })

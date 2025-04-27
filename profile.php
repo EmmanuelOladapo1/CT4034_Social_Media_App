@@ -1,8 +1,12 @@
 <?php
 // profile.php
+// Purpose: Handles user profile display and editing functionalities
+// This file allows users to view their own or other users' profiles
+// and provides profile editing capabilities for the logged-in user
 session_start();
 require_once 'config/database.php';
 
+// Redirect to login if not authenticated
 if (!isset($_SESSION['user_id'])) {
   header("Location: auth/login.php");
   exit();
@@ -28,6 +32,16 @@ $stmt = $conn->prepare("SELECT role FROM users WHERE user_id = ?");
 $stmt->execute([$_SESSION['user_id']]);
 $user_role = $stmt->fetchColumn();
 $isAdmin = ($user_role === 'admin');
+
+// Check if users are friends - ADDED THIS CODE
+$is_friend = false;
+if (!$viewing_own_profile) {
+  $stmt = $conn->prepare("SELECT * FROM friends
+                         WHERE (user_id = ? AND friend_id = ? AND status = 'accepted')
+                         OR (user_id = ? AND friend_id = ? AND status = 'accepted')");
+  $stmt->execute([$_SESSION['user_id'], $profile_id, $profile_id, $_SESSION['user_id']]);
+  $is_friend = ($stmt->rowCount() > 0);
+}
 
 // Update profile - only process if viewing own profile
 if ($viewing_own_profile && $_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -154,6 +168,21 @@ if ($viewing_own_profile && $_SERVER['REQUEST_METHOD'] === 'POST') {
           <p class="text-gray-500"><?php echo htmlspecialchars($profile_user['email']); ?></p>
           <p class="text-sm text-gray-500">Joined: <?php echo date('F j, Y', strtotime($profile_user['created_at'])); ?></p>
 
+          <!-- Friend request buttons - only show when viewing other users' profiles -->
+          <?php if (!$viewing_own_profile): ?>
+            <?php if (!$is_friend): ?>
+              <a href="friends.php?action=send_request&user_id=<?php echo $profile_user['user_id']; ?>"
+                class="mt-4 inline-block w-full py-2 mb-2 bg-blue-500 text-white text-center rounded hover:bg-blue-600">
+                Add Friend
+              </a>
+            <?php else: ?>
+              <a href="friends.php?action=remove&user_id=<?php echo $profile_user['user_id']; ?>"
+                class="mt-4 inline-block w-full py-2 mb-2 bg-red-500 text-white text-center rounded hover:bg-red-600">
+                Remove Friend
+              </a>
+            <?php endif; ?>
+          <?php endif; ?>
+
           <!-- Block/Report buttons - only show when viewing other users' profiles -->
           <?php if (!$viewing_own_profile): ?>
             <div class="mt-4 flex space-x-2">
@@ -272,6 +301,7 @@ if ($viewing_own_profile && $_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <script>
+      // Modal control functions
       function showReportModal() {
         document.getElementById('reportModal').classList.remove('hidden');
       }
