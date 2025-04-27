@@ -16,10 +16,46 @@ $admin = $stmt->fetch(PDO::FETCH_ASSOC);
 // Handle delete user
 if (isset($_GET['delete_user'])) {
   $user_id = $_GET['delete_user'];
-  $stmt = $conn->prepare("DELETE FROM users WHERE user_id = ?");
-  $stmt->execute([$user_id]);
-  header("Location: admin_dashboard.php?deleted=1");
-  exit();
+
+  try {
+    // Start transaction to ensure data integrity
+    $conn->beginTransaction();
+
+    // Delete all related records first to avoid foreign key constraint violations
+    $tables_to_clean = ['comments', 'likes', 'posts', 'messages', 'friends', 'friend_requests', 'reports'];
+
+    foreach ($tables_to_clean as $table) {
+      try {
+        // Different delete approaches based on table structure
+        if ($table === 'messages') {
+          $conn->prepare("DELETE FROM messages WHERE sender_id = ? OR receiver_id = ?")->execute([$user_id, $user_id]);
+        } elseif ($table === 'friends') {
+          $conn->prepare("DELETE FROM friends WHERE user_id1 = ? OR user_id2 = ?")->execute([$user_id, $user_id]);
+        } elseif ($table === 'reports') {
+          $conn->prepare("DELETE FROM reports WHERE reporter_id = ? OR reported_id = ?")->execute([$user_id, $user_id]);
+        } else {
+          $conn->prepare("DELETE FROM $table WHERE user_id = ?")->execute([$user_id]);
+        }
+      } catch (PDOException $e) {
+        // Log error but continue with other tables
+        error_log("Error deleting from $table: " . $e->getMessage());
+      }
+    }
+
+    // Now delete the user
+    $stmt = $conn->prepare("DELETE FROM users WHERE user_id = ?");
+    $stmt->execute([$user_id]);
+
+    // Commit the transaction
+    $conn->commit();
+
+    header("Location: admin_dashboard.php?deleted=1");
+    exit();
+  } catch (PDOException $e) {
+    // Rollback the transaction if something failed
+    $conn->rollBack();
+    $error = "Error deleting user: " . $e->getMessage();
+  }
 }
 
 // Get post statistics
@@ -83,6 +119,12 @@ $deleted = isset($_GET['deleted']) && $_GET['deleted'] == 1;
     <?php if ($deleted): ?>
       <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
         User has been successfully deleted.
+      </div>
+    <?php endif; ?>
+
+    <?php if (isset($error)): ?>
+      <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <?php echo htmlspecialchars($error); ?>
       </div>
     <?php endif; ?>
 
