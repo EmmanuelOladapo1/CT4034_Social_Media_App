@@ -18,6 +18,8 @@ $stmt = $conn->prepare("SELECT * FROM users WHERE user_id = ?");
 $stmt->execute([$_SESSION['user_id']]);
 $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
 ?>
+<!DOCTYPE html>
+<html lang="en">
 
 <head>
   <meta charset="UTF-8">
@@ -66,6 +68,7 @@ $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
         <div id="profileMenu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10">
           <a href="profile.php?id=<?php echo $_SESSION['user_id']; ?>" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">My Profile</a>
           <a href="messages.php" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Messages</a>
+          <a href="users.php" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">View Users</a>
           <a href="settings.php" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Settings</a>
           <?php if ($isAdmin): ?>
             <a href="admin_dashboard.php" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Admin Dashboard</a>
@@ -77,8 +80,6 @@ $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
   </nav>
 
   <div class="container mx-auto p-4 mt-4">
-
-
     <!-- Post Form -->
     <div class="bg-white p-4 rounded-lg shadow mb-4">
       <form action="process_post.php" method="POST" enctype="multipart/form-data" class="space-y-4">
@@ -100,187 +101,191 @@ $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
     </div>
 
     <!-- Display Posts -->
-    <?php
-    // Get posts with like counts
-    $search_query = isset($_GET['search']) ? trim($_GET['search']) : '';
+    <div class="posts-container">
+      <?php
+      // Get posts with like counts
+      $search_query = isset($_GET['search']) ? trim($_GET['search']) : '';
 
-    if (!empty($search_query)) {
-      // If search query exists, filter posts
-      $stmt = $conn->prepare("SELECT p.*, u.username, u.profile_image,
-                        (SELECT COUNT(*) FROM likes WHERE post_id = p.post_id) as like_count
-                        FROM posts p
-                        JOIN users u ON p.user_id = u.user_id
-                        WHERE p.content LIKE ?
-                        ORDER BY p.created_at DESC");
-      $stmt->execute(["%{$search_query}%"]);
+      if (!empty($search_query)) {
+        // If search query exists, filter posts
+        $stmt = $conn->prepare("SELECT p.*, u.username, u.profile_image,
+                              (SELECT COUNT(*) FROM likes WHERE post_id = p.post_id) as like_count
+                              FROM posts p
+                              JOIN users u ON p.user_id = u.user_id
+                              WHERE p.content LIKE ?
+                              ORDER BY p.created_at DESC");
+        $stmt->execute(["%{$search_query}%"]);
 
-      // Add a heading for search results
-      echo "<div class='bg-white p-4 rounded-lg shadow mb-4'>";
-      echo "<h2 class='text-xl font-bold mb-2'>Search Results for \"" . htmlspecialchars($search_query) . "\"</h2>";
+        // Add a heading for search results
+        echo "<div class='bg-white p-4 rounded-lg shadow mb-4'>";
+        echo "<h2 class='text-xl font-bold mb-2'>Search Results for \"" . htmlspecialchars($search_query) . "\"</h2>";
 
-      if ($stmt->rowCount() === 0) {
-        echo "<p class='text-gray-500'>No posts found matching your search.</p>";
-      }
-      echo "</div>";
-    } else {
-      // No search, show all posts
-      $stmt = $conn->query("SELECT p.*, u.username, u.profile_image,
-                      (SELECT COUNT(*) FROM likes WHERE post_id = p.post_id) as like_count
-                      FROM posts p
-                      JOIN users u ON p.user_id = u.user_id
-                      ORDER BY p.created_at DESC");
-    }
-
-    while ($post = $stmt->fetch(PDO::FETCH_ASSOC)) {
-      echo "<div class='bg-white p-4 rounded-lg shadow mb-4'>";
-
-      // Post header with username and timestamp
-      echo "<div class='flex justify-between items-start mb-3'>";
-      echo "<div class='flex items-center'>";
-
-      // User profile picture
-      echo "<div class='w-10 h-10 rounded-full overflow-hidden bg-gray-300 mr-3'>";
-      if ($post['profile_image']) {
-        echo "<img src='" . htmlspecialchars($post['profile_image']) . "' class='w-full h-full object-cover' alt='Profile'>";
+        if ($stmt->rowCount() === 0) {
+          echo "<p class='text-gray-500'>No posts found matching your search.</p>";
+        }
+        echo "</div>";
       } else {
-        echo "<div class='w-full h-full flex items-center justify-center text-gray-500 bg-white'>";
-        echo "<svg xmlns='http://www.w3.org/2000/svg' class='h-6 w-6' fill='none' viewBox='0 0 24 24' stroke='currentColor'>";
-        echo "<path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' />";
-        echo "</svg>";
-        echo "</div>";
-      }
-      echo "</div>";
-
-      echo "<p class='font-bold'>" . htmlspecialchars($post['username']) . "</p>";
-      echo "</div>";
-
-      // Only show edit/delete for post owner
-      if ($post['user_id'] == $_SESSION['user_id']) {
-        echo "<div class='flex space-x-2'>";
-        echo "<a href='edit_post.php?id=" . $post['post_id'] . "' class='text-blue-500 hover:underline'>Edit</a>";
-        echo "<a href='delete_post.php?id=" . $post['post_id'] . "' class='text-red-500 hover:underline' onclick='return confirm(\"Are you sure you want to delete this post?\")'>Delete</a>";
-        echo "</div>";
-      }
-      echo "</div>";
-
-      // Post content
-      echo "<p class='mb-2'>" . htmlspecialchars($post['content']) . "</p>";
-
-      // Post image
-      if ($post['image_url']) {
-        echo "<img src='" . htmlspecialchars($post['image_url']) . "' class='max-w-md mb-2'>";
+        // No search, show all posts
+        $stmt = $conn->query("SELECT p.*, u.username, u.profile_image,
+                            (SELECT COUNT(*) FROM likes WHERE post_id = p.post_id) as like_count
+                            FROM posts p
+                            JOIN users u ON p.user_id = u.user_id
+                            ORDER BY p.created_at DESC");
       }
 
-      // Post location
-      if ($post['latitude'] && $post['longitude']) {
-        echo "<div id='map-" . $post['post_id'] . "' class='h-32 w-full mb-2'></div>"; // Reduced height
-        echo "<p class='text-sm text-gray-600'>Posted from: <span id='location-name-" . $post['post_id'] . "'>";
-        echo $post['location_name'] ? htmlspecialchars($post['location_name']) : "Loading location...";
-        echo "</span></p>";
-        echo "<script>
-            const map" . $post['post_id'] . " = L.map('map-" . $post['post_id'] . "').setView([" . $post['latitude'] . ", " . $post['longitude'] . "], 13);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; OpenStreetMap contributors'
-            }).addTo(map" . $post['post_id'] . ");
-            L.marker([" . $post['latitude'] . ", " . $post['longitude'] . "]).addTo(map" . $post['post_id'] . ");";
+      while ($post = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        echo "<div class='bg-white p-4 rounded-lg shadow mb-4 post-item' id='post-" . $post['post_id'] . "'>";
 
-        // Only fetch location name if it's not already in the database
-        if (!$post['location_name']) {
-          echo "
-            // Fetch location name
-            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=" . $post['latitude'] . "&lon=" . $post['longitude'] . "&zoom=18&addressdetails=1`)
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById('location-name-" . $post['post_id'] . "').textContent = data.display_name || 'Unknown location';
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    document.getElementById('location-name-" . $post['post_id'] . "').textContent = 'Unknown location';
-                });";
-        }
+        // Post header with username and timestamp
+        echo "<div class='flex justify-between items-start mb-3'>";
+        echo "<div class='flex items-center'>";
 
-        echo "</script>";
-      }
-
-      echo "<p class='text-sm text-gray-500'>" . $post['created_at'] . "</p>";
-
-      // Like button with star icon
-      $likeStmt = $conn->prepare("SELECT COUNT(*) FROM likes WHERE post_id = ? AND user_id = ?");
-      $likeStmt->execute([$post['post_id'], $_SESSION['user_id']]);
-      $liked = ($likeStmt->fetchColumn() > 0);
-
-      echo "<div class='flex items-center mt-2 mb-2'>";
-      echo "<button class='like-button " . ($liked ? 'text-yellow-500' : 'text-gray-500') . " hover:text-yellow-500' data-post-id='" . $post['post_id'] . "'>";
-      // Star icon
-      echo "<svg xmlns='http://www.w3.org/2000/svg' class='h-5 w-5 inline' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z' /></svg>";
-      echo " <span class='like-count'>" . ($post['like_count'] ?? 0) . "</span>";
-      echo "</button>";
-      echo "</div>";
-
-      // Comment form
-      echo "<div class='mt-3'>";
-      echo "<form class='comment-form flex' data-post-id='" . $post['post_id'] . "'>";
-      echo "<input type='text' name='comment_content' placeholder='Write a comment...' class='w-full p-2 border rounded-l'>";
-      echo "<button type='submit' class='bg-blue-500 text-white px-4 py-2 rounded-r'>Comment</button>";
-      echo "</form>";
-      echo "</div>";
-
-      // Display comments with reply functionality
-      echo "<div class='comments-section mt-2 ml-4 text-sm'>";
-      $commentStmt = $conn->prepare("SELECT c.*, u.username FROM comments c JOIN users u ON c.user_id = u.user_id WHERE c.post_id = ? AND c.parent_id IS NULL ORDER BY c.created_at ASC");
-      $commentStmt->execute([$post['post_id']]);
-      while ($comment = $commentStmt->fetch(PDO::FETCH_ASSOC)) {
-        echo "<div class='comment p-2 mb-1 bg-gray-50 rounded' id='comment-" . $comment['comment_id'] . "'>";
-        echo "<div class='flex justify-between'>";
-        echo "<div>";
-        echo "<strong>" . htmlspecialchars($comment['username']) . ":</strong> ";
-        echo htmlspecialchars($comment['content']);
-        echo "</div>";
-
-        echo "<div class='flex space-x-2'>";
-        echo "<button class='reply-toggle text-blue-500 text-xs hover:underline' data-comment-id='" . $comment['comment_id'] . "'>Reply</button>";
-
-        // Only show delete button if comment belongs to current user
-        if ($comment['user_id'] == $_SESSION['user_id']) {
-          echo "<button class='delete-comment text-red-500 text-xs hover:underline' data-comment-id='" . $comment['comment_id'] . "'>Delete</button>";
+        // User profile picture
+        echo "<div class='w-10 h-10 rounded-full overflow-hidden bg-gray-300 mr-3'>";
+        if ($post['profile_image']) {
+          echo "<img src='" . htmlspecialchars($post['profile_image']) . "' class='w-full h-full object-cover' alt='Profile'>";
+        } else {
+          echo "<div class='w-full h-full flex items-center justify-center text-gray-500 bg-white'>";
+          echo "<svg xmlns='http://www.w3.org/2000/svg' class='h-6 w-6' fill='none' viewBox='0 0 24 24' stroke='currentColor'>";
+          echo "<path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' />";
+          echo "</svg>";
+          echo "</div>";
         }
         echo "</div>";
+
+        // Username with link and hover functionality
+        echo "<p class='font-bold'><a href='profile.php?id=" . $post['user_id'] . "' class='username-link' data-user-id='" . $post['user_id'] . "'>" . htmlspecialchars($post['username']) . "</a></p>";
         echo "</div>";
 
-        // Add reply form (hidden by default)
-        echo "<div class='reply-form hidden mt-2 ml-4' id='reply-form-" . $comment['comment_id'] . "'>";
-        echo "<form class='flex' data-parent-id='" . $comment['comment_id'] . "' data-post-id='" . $post['post_id'] . "'>";
-        echo "<input type='text' name='reply_content' placeholder='Write a reply...' class='w-full p-1 text-xs border rounded-l'>";
-        echo "<button type='submit' class='bg-blue-500 text-white px-2 py-1 text-xs rounded-r'>Reply</button>";
+        // Only show edit/delete for post owner
+        if ($post['user_id'] == $_SESSION['user_id']) {
+          echo "<div class='flex space-x-2'>";
+          echo "<a href='edit_post.php?id=" . $post['post_id'] . "' class='text-blue-500 hover:underline'>Edit</a>";
+          echo "<a href='delete_post.php?id=" . $post['post_id'] . "' class='text-red-500 hover:underline' onclick='return confirm(\"Are you sure you want to delete this post?\")'>Delete</a>";
+          echo "</div>";
+        }
+        echo "</div>";
+
+        // Post content
+        echo "<p class='mb-2'>" . htmlspecialchars($post['content']) . "</p>";
+
+        // Post image
+        if ($post['image_url']) {
+          echo "<img src='" . htmlspecialchars($post['image_url']) . "' class='max-w-md mb-2'>";
+        }
+
+        // Post location
+        if ($post['latitude'] && $post['longitude']) {
+          echo "<div id='map-" . $post['post_id'] . "' class='h-32 w-full mb-2'></div>"; // Reduced height
+          echo "<p class='text-sm text-gray-600'>Posted from: <span id='location-name-" . $post['post_id'] . "'>";
+          echo $post['location_name'] ? htmlspecialchars($post['location_name']) : "Loading location...";
+          echo "</span></p>";
+          echo "<script>
+              const map" . $post['post_id'] . " = L.map('map-" . $post['post_id'] . "').setView([" . $post['latitude'] . ", " . $post['longitude'] . "], 13);
+              L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                  attribution: '&copy; OpenStreetMap contributors'
+              }).addTo(map" . $post['post_id'] . ");
+              L.marker([" . $post['latitude'] . ", " . $post['longitude'] . "]).addTo(map" . $post['post_id'] . ");";
+
+          // Only fetch location name if it's not already in the database
+          if (!$post['location_name']) {
+            echo "
+              // Fetch location name
+              fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=" . $post['latitude'] . "&lon=" . $post['longitude'] . "&zoom=18&addressdetails=1`)
+                  .then(response => response.json())
+                  .then(data => {
+                      document.getElementById('location-name-" . $post['post_id'] . "').textContent = data.display_name || 'Unknown location';
+                  })
+                  .catch(error => {
+                      console.error('Error:', error);
+                      document.getElementById('location-name-" . $post['post_id'] . "').textContent = 'Unknown location';
+                  });";
+          }
+
+          echo "</script>";
+        }
+
+        echo "<p class='text-sm text-gray-500'>" . $post['created_at'] . "</p>";
+
+        // Like button with star icon
+        $likeStmt = $conn->prepare("SELECT COUNT(*) FROM likes WHERE post_id = ? AND user_id = ?");
+        $likeStmt->execute([$post['post_id'], $_SESSION['user_id']]);
+        $liked = ($likeStmt->fetchColumn() > 0);
+
+        echo "<div class='flex items-center mt-2 mb-2'>";
+        echo "<button class='like-button " . ($liked ? 'text-yellow-500' : 'text-gray-500') . " hover:text-yellow-500' data-post-id='" . $post['post_id'] . "'>";
+        // Star icon
+        echo "<svg xmlns='http://www.w3.org/2000/svg' class='h-5 w-5 inline' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z' /></svg>";
+        echo " <span class='like-count'>" . ($post['like_count'] ?? 0) . "</span>";
+        echo "</button>";
+        echo "</div>";
+
+        // Comment form
+        echo "<div class='mt-3'>";
+        echo "<form class='comment-form flex' data-post-id='" . $post['post_id'] . "'>";
+        echo "<input type='text' name='comment_content' placeholder='Write a comment...' class='w-full p-2 border rounded-l'>";
+        echo "<button type='submit' class='bg-blue-500 text-white px-4 py-2 rounded-r'>Comment</button>";
         echo "</form>";
         echo "</div>";
 
-        // Display replies to this comment
-        $replyStmt = $conn->prepare("SELECT c.*, u.username FROM comments c JOIN users u ON c.user_id = u.user_id WHERE c.parent_id = ? ORDER BY c.created_at ASC");
-        $replyStmt->execute([$comment['comment_id']]);
-
-        echo "<div class='replies ml-4 mt-1' id='replies-" . $comment['comment_id'] . "'>";
-        while ($reply = $replyStmt->fetch(PDO::FETCH_ASSOC)) {
-          echo "<div class='reply p-1 mb-1 bg-gray-100 rounded flex justify-between' id='comment-" . $reply['comment_id'] . "'>";
+        // Display comments with reply functionality
+        echo "<div class='comments-section mt-2 ml-4 text-sm'>";
+        $commentStmt = $conn->prepare("SELECT c.*, u.username FROM comments c JOIN users u ON c.user_id = u.user_id WHERE c.post_id = ? AND c.parent_id IS NULL ORDER BY c.created_at ASC");
+        $commentStmt->execute([$post['post_id']]);
+        while ($comment = $commentStmt->fetch(PDO::FETCH_ASSOC)) {
+          echo "<div class='comment p-2 mb-1 bg-gray-50 rounded' id='comment-" . $comment['comment_id'] . "'>";
+          echo "<div class='flex justify-between'>";
           echo "<div>";
-          echo "<strong>" . htmlspecialchars($reply['username']) . ":</strong> ";
-          echo htmlspecialchars($reply['content']);
+          echo "<strong><a href='profile.php?id=" . $comment['user_id'] . "' class='username-link' data-user-id='" . $comment['user_id'] . "'>" . htmlspecialchars($comment['username']) . "</a>:</strong> ";
+          echo htmlspecialchars($comment['content']);
           echo "</div>";
 
-          // Only show delete button if reply belongs to current user
-          if ($reply['user_id'] == $_SESSION['user_id']) {
-            echo "<button class='delete-comment text-red-500 text-xs hover:underline' data-comment-id='" . $reply['comment_id'] . "'>Delete</button>";
+          echo "<div class='flex space-x-2'>";
+          echo "<button class='reply-toggle text-blue-500 text-xs hover:underline' data-comment-id='" . $comment['comment_id'] . "'>Reply</button>";
+
+          // Only show delete button if comment belongs to current user
+          if ($comment['user_id'] == $_SESSION['user_id']) {
+            echo "<button class='delete-comment text-red-500 text-xs hover:underline' data-comment-id='" . $comment['comment_id'] . "'>Delete</button>";
           }
-
           echo "</div>";
-        }
-        echo "</div>"; // End replies
+          echo "</div>";
 
-        echo "</div>"; // End comment
+          // Add reply form (hidden by default)
+          echo "<div class='reply-form hidden mt-2 ml-4' id='reply-form-" . $comment['comment_id'] . "'>";
+          echo "<form class='flex' data-parent-id='" . $comment['comment_id'] . "' data-post-id='" . $post['post_id'] . "'>";
+          echo "<input type='text' name='reply_content' placeholder='Write a reply...' class='w-full p-1 text-xs border rounded-l'>";
+          echo "<button type='submit' class='bg-blue-500 text-white px-2 py-1 text-xs rounded-r'>Reply</button>";
+          echo "</form>";
+          echo "</div>";
+
+          // Display replies to this comment
+          $replyStmt = $conn->prepare("SELECT c.*, u.username FROM comments c JOIN users u ON c.user_id = u.user_id WHERE c.parent_id = ? ORDER BY c.created_at ASC");
+          $replyStmt->execute([$comment['comment_id']]);
+
+          echo "<div class='replies ml-4 mt-1' id='replies-" . $comment['comment_id'] . "'>";
+          while ($reply = $replyStmt->fetch(PDO::FETCH_ASSOC)) {
+            echo "<div class='reply p-1 mb-1 bg-gray-100 rounded flex justify-between' id='comment-" . $reply['comment_id'] . "'>";
+            echo "<div>";
+            echo "<strong><a href='profile.php?id=" . $reply['user_id'] . "' class='username-link' data-user-id='" . $reply['user_id'] . "'>" . htmlspecialchars($reply['username']) . "</a>:</strong> ";
+            echo htmlspecialchars($reply['content']);
+            echo "</div>";
+
+            // Only show delete button if reply belongs to current user
+            if ($reply['user_id'] == $_SESSION['user_id']) {
+              echo "<button class='delete-comment text-red-500 text-xs hover:underline' data-comment-id='" . $reply['comment_id'] . "'>Delete</button>";
+            }
+
+            echo "</div>";
+          }
+          echo "</div>"; // End replies
+
+          echo "</div>"; // End comment
+        }
+        echo "</div>"; // End comments section
+        echo "</div>"; // End post item
       }
-      echo "</div>"; // End comments section
-    }
-    ?>
+      ?>
+    </div>
   </div>
 
   <script>
@@ -370,13 +375,13 @@ $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
                 const comment = data.comment;
                 // Updated HTML structure to match existing comments with delete button
                 const commentHTML = `
-            <div class="comment p-2 mb-1 bg-gray-50 rounded flex justify-between" id="comment-${comment.comment_id}">
-              <div>
-                <strong>${comment.username}:</strong> ${comment.content}
-              </div>
-              <button class="delete-comment text-red-500 text-xs hover:underline" data-comment-id="${comment.comment_id}">Delete</button>
-            </div>
-          `;
+                  <div class="comment p-2 mb-1 bg-gray-50 rounded flex justify-between" id="comment-${comment.comment_id}">
+                    <div>
+                      <strong><a href="profile.php?id=${comment.user_id}" class="username-link" data-user-id="${comment.user_id}">${comment.username}</a>:</strong> ${comment.content}
+                    </div>
+                    <button class="delete-comment text-red-500 text-xs hover:underline" data-comment-id="${comment.comment_id}">Delete</button>
+                  </div>
+                `;
                 const commentsSection = this.parentElement.nextElementSibling;
                 commentsSection.innerHTML += commentHTML;
                 input.value = '';
@@ -460,13 +465,13 @@ $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
               if (data.success) {
                 const reply = data.comment;
                 const replyHTML = `
-          <div class="reply p-1 mb-1 bg-gray-100 rounded flex justify-between" id="comment-${reply.comment_id}">
-            <div>
-              <strong>${reply.username}:</strong> ${reply.content}
-            </div>
-            <button class="delete-comment text-red-500 text-xs hover:underline" data-comment-id="${reply.comment_id}">Delete</button>
-          </div>
-        `;
+                  <div class="reply p-1 mb-1 bg-gray-100 rounded flex justify-between" id="comment-${reply.comment_id}">
+                    <div>
+                      <strong><a href="profile.php?id=${reply.user_id}" class="username-link" data-user-id="${reply.user_id}">${reply.username}</a>:</strong> ${reply.content}
+                    </div>
+                    <button class="delete-comment text-red-500 text-xs hover:underline" data-comment-id="${reply.comment_id}">Delete</button>
+                  </div>
+                `;
                 const repliesContainer = document.getElementById('replies-' + parentId);
                 repliesContainer.innerHTML += replyHTML;
                 input.value = '';
@@ -475,41 +480,47 @@ $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
             });
         }
       });
-    });
-  </script>
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      const searchInput = document.getElementById('liveSearch');
-      const postsContainer = document.querySelector('.container');
-      const debugElement = document.getElementById('searchDebug');
-      let searchTimeout;
 
-      searchInput.addEventListener('input', function() {
-        clearTimeout(searchTimeout);
-        const query = this.value.trim();
+      // Username hover functionality
+      const usernames = document.querySelectorAll('.username-link');
 
-        debugElement.textContent = `Searching: "${query}"`;
+      usernames.forEach(function(username) {
+        username.addEventListener('mouseenter', function() {
+          const userId = this.dataset.userId;
+          const rect = this.getBoundingClientRect();
 
-        // Add a small delay to prevent too many requests
-        searchTimeout = setTimeout(() => {
-          fetch('feed.php?live_search=' + encodeURIComponent(query))
-            .then(response => response.text())
-            .then(html => {
-              const tempDiv = document.createElement('div');
-              tempDiv.innerHTML = html;
+          // Create hover card
+          const hoverCard = document.createElement('div');
+          hoverCard.className = 'fixed bg-white p-3 rounded-lg shadow-lg z-50 username-hover-card';
+          hoverCard.style.top = `${rect.bottom + window.scrollY + 5}px`;
+          hoverCard.style.left = `${rect.left + window.scrollX}px`;
 
-              // Extract the posts container from the response
-              const newPosts = tempDiv.querySelector('.posts-container');
-              if (newPosts) {
-                document.querySelector('.posts-container').innerHTML = newPosts.innerHTML;
-                debugElement.textContent = `Found: ${document.querySelectorAll('.post-item').length} posts`;
-              }
-            })
-            .catch(error => {
-              console.error('Search error:', error);
-              debugElement.textContent = 'Search error';
-            });
-        }, 300);
+          // Add content
+          hoverCard.innerHTML = `
+            <a href="profile.php?id=${userId}" class="block text-blue-600 hover:underline">View Profile</a>
+          `;
+
+          document.body.appendChild(hoverCard);
+
+          // Store reference
+          this.hoverCard = hoverCard;
+        });
+
+        username.addEventListener('mouseleave', function() {
+          // Remove after a short delay (to allow moving to the card)
+          setTimeout(() => {
+            if (this.hoverCard && !this.hoverCard.matches(':hover')) {
+              this.hoverCard.remove();
+            }
+          }, 300);
+        });
+      });
+
+      // Remove any hover cards when clicking elsewhere
+      document.addEventListener('click', function(e) {
+        if (!e.target.closest('.username-hover-card') && !e.target.classList.contains('username-link')) {
+          document.querySelectorAll('.username-hover-card').forEach(card => card.remove());
+        }
       });
     });
   </script>
