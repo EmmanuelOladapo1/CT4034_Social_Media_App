@@ -27,7 +27,7 @@ if (!$profile_user) {
   exit();
 }
 
-// Get current user data for admin check
+// Fix the role check (around line 35)
 $stmt = $conn->prepare("SELECT role FROM users WHERE user_id = ?");
 $stmt->execute([$_SESSION['user_id']]);
 $user_role = $stmt->fetchColumn();
@@ -37,8 +37,8 @@ $isAdmin = ($user_role === 'admin');
 $is_friend = false;
 if (!$viewing_own_profile) {
   $stmt = $conn->prepare("SELECT * FROM friends
-                         WHERE (user_id = ? AND friend_id = ? AND status = 'accepted')
-                         OR (user_id = ? AND friend_id = ? AND status = 'accepted')");
+                      WHERE (user_id1 = ? AND user_id2 = ?)
+                      OR (user_id1 = ? AND user_id2 = ?)");
   $stmt->execute([$_SESSION['user_id'], $profile_id, $profile_id, $_SESSION['user_id']]);
   $is_friend = ($stmt->rowCount() > 0);
 }
@@ -171,12 +171,12 @@ if ($viewing_own_profile && $_SERVER['REQUEST_METHOD'] === 'POST') {
           <!-- Friend request buttons - only show when viewing other users' profiles -->
           <?php if (!$viewing_own_profile): ?>
             <?php if (!$is_friend): ?>
-              <a href="friends.php?action=send_request&user_id=<?php echo $profile_user['user_id']; ?>"
+              <a href="friends.php?action=send_request&receiver_id=<?php echo $profile_user['user_id']; ?>"
                 class="mt-4 inline-block w-full py-2 mb-2 bg-blue-500 text-white text-center rounded hover:bg-blue-600">
                 Add Friend
               </a>
             <?php else: ?>
-              <a href="friends.php?action=remove&user_id=<?php echo $profile_user['user_id']; ?>"
+              <a href="friends.php?action=remove&receiver_id=<?php echo $profile_user['user_id']; ?>"
                 class="mt-4 inline-block w-full py-2 mb-2 bg-red-500 text-white text-center rounded hover:bg-red-600">
                 Remove Friend
               </a>
