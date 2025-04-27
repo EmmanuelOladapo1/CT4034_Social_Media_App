@@ -67,6 +67,9 @@ $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
           <a href="profile.php?id=<?php echo $_SESSION['user_id']; ?>" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">My Profile</a>
           <a href="messages.php" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Messages</a>
           <a href="settings.php" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Settings</a>
+          <?php if ($isAdmin): ?>
+            <a href="admin_dashboard.php" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Admin Dashboard</a>
+          <?php endif; ?>
           <a href="auth/logout.php" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Logout</a>
         </div>
       </div>
