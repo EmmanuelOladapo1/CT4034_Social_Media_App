@@ -31,26 +31,7 @@ $stmt->execute([$_SESSION['user_id']]);
 $user_role = $stmt->fetchColumn();
 $isAdmin = ($user_role === 'admin');
 
-// Check if users are friends
-$is_friend = false;
-if (!$viewing_own_profile) {
-  $stmt = $conn->prepare("SELECT * FROM friends
-                      WHERE (user_id1 = ? AND user_id2 = ?)
-                      OR (user_id1 = ? AND user_id2 = ?)");
-  $stmt->execute([$_SESSION['user_id'], $profile_id, $profile_id, $_SESSION['user_id']]);
-  $is_friend = ($stmt->rowCount() > 0);
-
-  // Check for pending friend request
-  $stmt = $conn->prepare("SELECT * FROM friend_requests
-                      WHERE sender_id = ? AND receiver_id = ?");
-  $stmt->execute([$_SESSION['user_id'], $profile_id]);
-  $has_sent_request = ($stmt->rowCount() > 0);
-
-  $stmt = $conn->prepare("SELECT * FROM friend_requests
-                      WHERE sender_id = ? AND receiver_id = ?");
-  $stmt->execute([$profile_id, $_SESSION['user_id']]);
-  $has_received_request = ($stmt->rowCount() > 0);
-}
+// No friend check needed - removed friend functionality
 
 // Update profile - only process if viewing own profile
 if ($viewing_own_profile && $_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -177,35 +158,7 @@ if ($viewing_own_profile && $_SERVER['REQUEST_METHOD'] === 'POST') {
           <p class="text-gray-500"><?php echo htmlspecialchars($profile_user['email']); ?></p>
           <p class="text-sm text-gray-500">Joined: <?php echo date('F j, Y', strtotime($profile_user['created_at'])); ?></p>
 
-          <!-- Friend request buttons - only show when viewing other users' profiles -->
-          <?php if (!$viewing_own_profile): ?>
-            <?php if (!$is_friend && !$has_sent_request && !$has_received_request): ?>
-              <a href="friends.php?action=send_request&receiver_id=<?php echo $profile_user['user_id']; ?>"
-                class="mt-4 inline-block w-full py-2 mb-2 bg-blue-500 text-white text-center rounded hover:bg-blue-600">
-                Add Friend
-              </a>
-            <?php elseif ($has_sent_request): ?>
-              <span class="mt-4 inline-block w-full py-2 mb-2 bg-gray-300 text-gray-700 text-center rounded">
-                Request Sent
-              </span>
-            <?php elseif ($has_received_request): ?>
-              <div class="mt-4 space-y-2">
-                <a href="friends.php?action=accept&user_id=<?php echo $profile_user['user_id']; ?>"
-                  class="inline-block w-full py-2 bg-green-500 text-white text-center rounded hover:bg-green-600">
-                  Accept Request
-                </a>
-                <a href="friends.php?action=decline&user_id=<?php echo $profile_user['user_id']; ?>"
-                  class="inline-block w-full py-2 bg-red-500 text-white text-center rounded hover:bg-red-600">
-                  Decline Request
-                </a>
-              </div>
-            <?php elseif ($is_friend): ?>
-              <a href="friends.php?action=remove&receiver_id=<?php echo $profile_user['user_id']; ?>"
-                class="mt-4 inline-block w-full py-2 mb-2 bg-red-500 text-white text-center rounded hover:bg-red-600">
-                Remove Friend
-              </a>
-            <?php endif; ?>
-          <?php endif; ?>
+          <!-- Friend feature removed as requested -->
 
           <!-- Block/Report buttons - only show when viewing other users' profiles -->
           <?php if (!$viewing_own_profile): ?>
