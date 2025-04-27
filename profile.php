@@ -31,7 +31,15 @@ $stmt->execute([$_SESSION['user_id']]);
 $user_role = $stmt->fetchColumn();
 $isAdmin = ($user_role === 'admin');
 
-// No friend check needed - removed friend functionality
+// Check if users are friends
+$is_friend = false;
+if (!$viewing_own_profile) {
+  $stmt = $conn->prepare("SELECT * FROM friends
+                      WHERE (user_id1 = ? AND user_id2 = ?)
+                      OR (user_id1 = ? AND user_id2 = ?)");
+  $stmt->execute([$_SESSION['user_id'], $profile_id, $profile_id, $_SESSION['user_id']]);
+  $is_friend = ($stmt->rowCount() > 0);
+}
 
 // Update profile - only process if viewing own profile
 if ($viewing_own_profile && $_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -143,7 +151,7 @@ if ($viewing_own_profile && $_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="bg-white p-6 rounded-lg shadow-md">
       <div class="flex flex-col md:flex-row">
         <div class="md:w-1/3 mb-6 md:mb-0 flex flex-col items-center">
-          <div class="w-32 h-32 rounded-full overflow-hidden mb-4">
+          <div class="w-32 h-32 rounded-full overflow-hidden mb-4 relative user-profile-image">
             <?php if ($profile_user['profile_image']): ?>
               <img src="<?php echo htmlspecialchars($profile_user['profile_image']); ?>" class="w-full h-full object-cover" alt="Profile picture">
             <?php else: ?>
@@ -153,12 +161,56 @@ if ($viewing_own_profile && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 </svg>
               </div>
             <?php endif; ?>
+
+            <!-- Profile Hover Menu (only for other users) -->
+            <?php if (!$viewing_own_profile): ?>
+              <div class="profile-hover-menu hidden absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center space-x-2">
+                <a href="messages.php?user_id=<?php echo $profile_user['user_id']; ?>" class="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600" title="Message">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                  </svg>
+                </a>
+                <?php if ($is_friend): ?>
+                  <a href="friends.php?action=remove&user_id=<?php echo $profile_user['user_id']; ?>" class="bg-red-500 text-white p-2 rounded-full hover:bg-red-600" title="Remove Friend">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7a4 4 0 11-8 0 4 4 0 018 0zM9 14a6 6 0 00-6 6v1h12v-1a6 6 0 00-6-6zM21 12h-6" />
+                    </svg>
+                  </a>
+                <?php else: ?>
+                  <a href="friends.php?action=add&user_id=<?php echo $profile_user['user_id']; ?>" class="bg-green-500 text-white p-2 rounded-full hover:bg-green-600" title="Add Friend">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                  </a>
+                <?php endif; ?>
+              </div>
+            <?php endif; ?>
           </div>
           <p class="text-lg font-bold"><?php echo htmlspecialchars($profile_user['username']); ?></p>
           <p class="text-gray-500"><?php echo htmlspecialchars($profile_user['email']); ?></p>
           <p class="text-sm text-gray-500">Joined: <?php echo date('F j, Y', strtotime($profile_user['created_at'])); ?></p>
 
-          <!-- Friend feature removed as requested -->
+          <!-- Friend/Message buttons - only show when viewing other users' profiles -->
+          <?php if (!$viewing_own_profile): ?>
+            <div class="mt-4 space-y-2 w-full">
+              <a href="messages.php?user_id=<?php echo $profile_user['user_id']; ?>"
+                class="inline-block w-full py-2 bg-blue-500 text-white text-center rounded hover:bg-blue-600">
+                Message
+              </a>
+
+              <?php if ($is_friend): ?>
+                <a href="friends.php?action=remove&user_id=<?php echo $profile_user['user_id']; ?>"
+                  class="inline-block w-full py-2 bg-red-500 text-white text-center rounded hover:bg-red-600">
+                  Remove Friend
+                </a>
+              <?php else: ?>
+                <a href="friends.php?action=add&user_id=<?php echo $profile_user['user_id']; ?>"
+                  class="inline-block w-full py-2 bg-green-500 text-white text-center rounded hover:bg-green-600">
+                  Add Friend
+                </a>
+              <?php endif; ?>
+            </div>
+          <?php endif; ?>
 
           <!-- Block/Report buttons - only show when viewing other users' profiles -->
           <?php if (!$viewing_own_profile): ?>
@@ -294,6 +346,22 @@ if ($viewing_own_profile && $_SERVER['REQUEST_METHOD'] === 'POST') {
       function hideBlockModal() {
         document.getElementById('blockModal').classList.add('hidden');
       }
+
+      // Profile image hover functionality
+      document.addEventListener('DOMContentLoaded', function() {
+        const profileImage = document.querySelector('.user-profile-image');
+        const hoverMenu = document.querySelector('.profile-hover-menu');
+
+        if (profileImage && hoverMenu) {
+          profileImage.addEventListener('mouseenter', function() {
+            hoverMenu.classList.remove('hidden');
+          });
+
+          profileImage.addEventListener('mouseleave', function() {
+            hoverMenu.classList.add('hidden');
+          });
+        }
+      });
     </script>
   <?php endif; ?>
 </body>

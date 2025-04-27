@@ -1,6 +1,6 @@
 <?php
-// messages.php - simplified version
-// Purpose: Handles basic messaging functionality (sending/receiving messages only)
+// messages.php - updated version
+// Purpose: Handles user messaging functionality with friend selection
 session_start();
 require_once 'config/database.php';
 
@@ -111,6 +111,38 @@ if ($conversation_partner_id) {
                          WHERE sender_id = ? AND receiver_id = ? AND is_read = 0");
   $stmt->execute([$conversation_partner_id, $_SESSION['user_id']]);
 }
+
+// Get user's friends for the contacts panel
+$stmt = $conn->prepare("
+  SELECT u.user_id, u.username, u.profile_image
+  FROM users u
+  JOIN friends f ON (
+      (f.user_id1 = u.user_id AND f.user_id2 = ?) OR
+      (f.user_id2 = u.user_id AND f.user_id1 = ?)
+  )
+  WHERE u.user_id != ?
+  ORDER BY u.username
+");
+$stmt->execute([$_SESSION['user_id'], $_SESSION['user_id'], $_SESSION['user_id']]);
+$friends = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Get other users who are not friends
+$stmt = $conn->prepare("
+  SELECT u.user_id, u.username, u.profile_image
+  FROM users u
+  WHERE u.user_id != ? AND u.user_id NOT IN (
+      SELECT CASE
+          WHEN f.user_id1 = ? THEN f.user_id2
+          WHEN f.user_id2 = ? THEN f.user_id1
+      END
+      FROM friends f
+      WHERE f.user_id1 = ? OR f.user_id2 = ?
+  )
+  ORDER BY u.username
+  LIMIT 20
+");
+$stmt->execute([$_SESSION['user_id'], $_SESSION['user_id'], $_SESSION['user_id'], $_SESSION['user_id'], $_SESSION['user_id']]);
+$other_users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -126,7 +158,8 @@ if ($conversation_partner_id) {
       min-height: 300px;
     }
 
-    .messages-list {
+    .messages-list,
+    .contacts-list {
       height: calc(100vh - 300px);
       min-height: 300px;
       overflow-y: auto;
@@ -138,7 +171,10 @@ if ($conversation_partner_id) {
   <div class="container mx-auto p-4">
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-bold">Messages</h1>
-      <a href="feed.php" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Back to Feed</a>
+      <div class="flex space-x-2">
+        <a href="friends.php" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Friends</a>
+        <a href="feed.php" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Back to Feed</a>
+      </div>
     </div>
 
     <?php if (!empty($errors)): ?>
@@ -158,49 +194,121 @@ if ($conversation_partner_id) {
     <?php endif; ?>
 
     <div class="flex flex-col md:flex-row bg-white rounded-lg shadow-md overflow-hidden">
-      <!-- Conversations List -->
+      <!-- Conversations and Contacts Tabs -->
       <div class="w-full md:w-1/3 border-r border-gray-200">
-        <div class="p-4 border-b border-gray-200 bg-gray-50">
-          <h2 class="font-bold">Conversations</h2>
+        <div class="border-b border-gray-200">
+          <ul class="flex" id="tabs">
+            <li class="flex-1 text-center">
+              <a href="#conversations" class="block py-3 px-4 font-medium tab-link active" data-tab="conversations">Conversations</a>
+            </li>
+            <li class="flex-1 text-center">
+              <a href="#contacts" class="block py-3 px-4 font-medium tab-link" data-tab="contacts">Contacts</a>
+            </li>
+          </ul>
         </div>
-        <div class="messages-list">
-          <?php if (empty($conversations)): ?>
-            <div class="p-4 text-gray-500 text-center">
-              <p>No conversations yet</p>
-              <p class="mt-2 text-sm">Start a new message by visiting a user's profile</p>
-            </div>
-          <?php else: ?>
-            <?php foreach ($conversations as $conversation): ?>
-              <a href="messages.php?user_id=<?php echo $conversation['user_id']; ?>"
-                class="block p-4 border-b border-gray-100 hover:bg-gray-50 <?php echo ($conversation_partner_id == $conversation['user_id']) ? 'bg-blue-50' : ''; ?>">
-                <div class="flex items-start">
-                  <div class="w-10 h-10 rounded-full overflow-hidden bg-gray-300 mr-3 flex-shrink-0">
-                    <?php if ($conversation['profile_image']): ?>
-                      <img src="<?php echo htmlspecialchars($conversation['profile_image']); ?>" class="w-full h-full object-cover" alt="Profile">
-                    <?php else: ?>
-                      <div class="w-full h-full flex items-center justify-center text-gray-500 bg-white">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
-                      </div>
-                    <?php endif; ?>
-                  </div>
-                  <div class="flex-grow min-w-0">
-                    <div class="flex justify-between items-center mb-1">
-                      <span class="font-medium truncate"><?php echo htmlspecialchars($conversation['username']); ?></span>
-                      <span class="text-xs text-gray-500">
-                        <?php echo date('M d', strtotime($conversation['last_message_time'])); ?>
-                      </span>
+
+        <!-- Conversations Tab -->
+        <div id="conversations-tab" class="tab-content">
+          <div class="messages-list">
+            <?php if (empty($conversations)): ?>
+              <div class="p-4 text-gray-500 text-center">
+                <p>No conversations yet</p>
+                <p class="mt-2 text-sm">Start a new message by selecting a contact</p>
+              </div>
+            <?php else: ?>
+              <?php foreach ($conversations as $conversation): ?>
+                <a href="messages.php?user_id=<?php echo $conversation['user_id']; ?>"
+                  class="block p-4 border-b border-gray-100 hover:bg-gray-50 <?php echo ($conversation_partner_id == $conversation['user_id']) ? 'bg-blue-50' : ''; ?>">
+                  <div class="flex items-start">
+                    <div class="w-10 h-10 rounded-full overflow-hidden bg-gray-300 mr-3 flex-shrink-0">
+                      <?php if ($conversation['profile_image']): ?>
+                        <img src="<?php echo htmlspecialchars($conversation['profile_image']); ?>" class="w-full h-full object-cover" alt="Profile">
+                      <?php else: ?>
+                        <div class="w-full h-full flex items-center justify-center text-gray-500 bg-white">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                        </div>
+                      <?php endif; ?>
                     </div>
-                    <p class="text-gray-600 text-sm truncate">
-                      <?php echo htmlspecialchars(substr($conversation['last_message'], 0, 50)); ?>
-                      <?php echo strlen($conversation['last_message']) > 50 ? '...' : ''; ?>
-                    </p>
+                    <div class="flex-grow min-w-0">
+                      <div class="flex justify-between items-center mb-1">
+                        <span class="font-medium truncate"><?php echo htmlspecialchars($conversation['username']); ?></span>
+                        <span class="text-xs text-gray-500">
+                          <?php echo date('M d', strtotime($conversation['last_message_time'])); ?>
+                        </span>
+                      </div>
+                      <p class="text-gray-600 text-sm truncate">
+                        <?php echo htmlspecialchars(substr($conversation['last_message'], 0, 50)); ?>
+                        <?php echo strlen($conversation['last_message']) > 50 ? '...' : ''; ?>
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </a>
-            <?php endforeach; ?>
-          <?php endif; ?>
+                </a>
+              <?php endforeach; ?>
+            <?php endif; ?>
+          </div>
+        </div>
+
+        <!-- Contacts Tab -->
+        <div id="contacts-tab" class="tab-content hidden">
+          <div class="contacts-list">
+            <?php if (count($friends) > 0): ?>
+              <div class="p-2 bg-gray-100">
+                <h3 class="text-sm font-semibold text-gray-700">Friends</h3>
+              </div>
+              <?php foreach ($friends as $friend): ?>
+                <a href="messages.php?user_id=<?php echo $friend['user_id']; ?>"
+                  class="block p-3 border-b border-gray-100 hover:bg-gray-50 <?php echo ($conversation_partner_id == $friend['user_id']) ? 'bg-blue-50' : ''; ?>">
+                  <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-full overflow-hidden bg-gray-300 mr-3">
+                      <?php if ($friend['profile_image']): ?>
+                        <img src="<?php echo htmlspecialchars($friend['profile_image']); ?>" class="w-full h-full object-cover" alt="Profile">
+                      <?php else: ?>
+                        <div class="w-full h-full flex items-center justify-center text-gray-500 bg-white">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                        </div>
+                      <?php endif; ?>
+                    </div>
+                    <span class="font-medium"><?php echo htmlspecialchars($friend['username']); ?></span>
+                  </div>
+                </a>
+              <?php endforeach; ?>
+            <?php endif; ?>
+
+            <?php if (count($other_users) > 0): ?>
+              <div class="p-2 bg-gray-100">
+                <h3 class="text-sm font-semibold text-gray-700">Other Users</h3>
+              </div>
+              <?php foreach ($other_users as $user): ?>
+                <a href="messages.php?user_id=<?php echo $user['user_id']; ?>"
+                  class="block p-3 border-b border-gray-100 hover:bg-gray-50 <?php echo ($conversation_partner_id == $user['user_id']) ? 'bg-blue-50' : ''; ?>">
+                  <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-full overflow-hidden bg-gray-300 mr-3">
+                      <?php if ($user['profile_image']): ?>
+                        <img src="<?php echo htmlspecialchars($user['profile_image']); ?>" class="w-full h-full object-cover" alt="Profile">
+                      <?php else: ?>
+                        <div class="w-full h-full flex items-center justify-center text-gray-500 bg-white">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                        </div>
+                      <?php endif; ?>
+                    </div>
+                    <span class="font-medium"><?php echo htmlspecialchars($user['username']); ?></span>
+                  </div>
+                </a>
+              <?php endforeach; ?>
+            <?php endif; ?>
+
+            <?php if (count($friends) == 0 && count($other_users) == 0): ?>
+              <div class="p-4 text-gray-500 text-center">
+                <p>No contacts found</p>
+              </div>
+            <?php endif; ?>
+          </div>
         </div>
       </div>
 
@@ -282,10 +390,10 @@ if ($conversation_partner_id) {
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
               </svg>
               <h3 class="text-xl font-medium mb-2">Your Messages</h3>
-              <p class="mb-4">Select a conversation or start a new one from a user's profile</p>
-              <a href="friends.php" class="inline-block px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-                Find Users
-              </a>
+              <p class="mb-4">Select a conversation or select a contact to start messaging</p>
+              <button class="inline-block px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600" id="openContactsButton">
+                Find Someone to Message
+              </button>
             </div>
           </div>
         <?php endif; ?>
@@ -299,6 +407,36 @@ if ($conversation_partner_id) {
       const messageContainer = document.getElementById('messageContainer');
       if (messageContainer) {
         messageContainer.scrollTop = messageContainer.scrollHeight;
+      }
+
+      // Tab switching functionality
+      const tabLinks = document.querySelectorAll('.tab-link');
+      const tabContents = document.querySelectorAll('.tab-content');
+
+      tabLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+          e.preventDefault();
+
+          // Remove active class from all tabs
+          tabLinks.forEach(tab => tab.classList.remove('active', 'border-b-2', 'border-blue-500', 'text-blue-600'));
+          tabContents.forEach(content => content.classList.add('hidden'));
+
+          // Add active class to current tab
+          this.classList.add('active', 'border-b-2', 'border-blue-500', 'text-blue-600');
+
+          // Show the corresponding tab content
+          const tabId = this.getAttribute('data-tab');
+          document.getElementById(tabId + '-tab').classList.remove('hidden');
+        });
+      });
+
+      // Open contacts tab button
+      const openContactsButton = document.getElementById('openContactsButton');
+      if (openContactsButton) {
+        openContactsButton.addEventListener('click', function() {
+          // Click the contacts tab link
+          document.querySelector('[data-tab="contacts"]').click();
+        });
       }
     });
   </script>
