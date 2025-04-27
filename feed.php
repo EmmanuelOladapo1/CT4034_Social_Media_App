@@ -1,12 +1,3 @@
-<!-- Debug info -->
-<div style="display:none">
-  <?php
-  echo "GET parameters: ";
-  print_r($_GET);
-  echo "<br>Current URI: " . $_SERVER['REQUEST_URI'];
-  ?>
-</div>
-
 <?php
 session_start();
 require_once 'config/database.php';
@@ -16,15 +7,17 @@ if (!isset($_SESSION['user_id'])) {
   exit();
 }
 
+// Check if user is admin
+$stmt = $conn->prepare("SELECT role FROM users WHERE user_id = ?");
+$stmt->execute([$_SESSION['user_id']]);
+$user_role = $stmt->fetchColumn();
+$isAdmin = ($user_role === 'admin');
+
 // Get current user data
 $stmt = $conn->prepare("SELECT * FROM users WHERE user_id = ?");
 $stmt->execute([$_SESSION['user_id']]);
 $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
 ?>
-<!DOCTYPE html>
-<html lang="en">
-
-
 
 <head>
   <meta charset="UTF-8">
