@@ -26,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   // Query the separate admins table
   $stmt = $conn->prepare("SELECT * FROM admins WHERE username = ?");
   $stmt->execute([$username]);
-  $admin = $stmt->fetch();
+  $admin = $stmt->fetch(PDO::FETCH_ASSOC); // Add PDO::FETCH_ASSOC here
 
   // FIXED: Changed from 'password' to 'password_hash' to match the column name
   if ($admin && password_verify($password, $admin['password_hash'])) {
