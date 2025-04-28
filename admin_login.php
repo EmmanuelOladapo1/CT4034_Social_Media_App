@@ -8,7 +8,7 @@ $stmt->execute();
 if ($stmt->fetchColumn() == 0) {
   // Create default admin account
   $default_username = 'admin';
-  $default_password = 'Admin123'; // This will be the password you can use
+  $default_password = 'admin123'; // This will be the password you can use
   $hashed_password = password_hash($default_password, PASSWORD_DEFAULT);
 
   $stmt = $conn->prepare("INSERT INTO admins (username, email, password, full_name, created_at)
