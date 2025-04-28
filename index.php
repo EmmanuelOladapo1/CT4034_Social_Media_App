@@ -1585,113 +1585,124 @@ function include_header($page)
   {
     global $conn;
     $user_id = $_SESSION['user_id'];
-    $query = "SELECT * FROM users WHERE user_id = ?";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("i", $user_id);
-    $stmt->execute();
-    $user = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
-    echo "<div class='profile-info'><h2>" . $user['username'] . "</h2><p>Email: " . $user['email'] . "</p></div>
-    <div class='profile-actions'><button onclick='changePassword()'>Change Password</button><a href='index.php?page=logout' class='btn-logout'>Logout</a></div>";
-    // Get posts for the news feed first
-    $query = "SELECT p.*, u.username, u.profile_pic,
-              (SELECT COUNT(*) FROM likes WHERE post_id = p.post_id) AS like_count,
-              (SELECT COUNT(*) FROM comments WHERE post_id = p.post_id) AS comment_count,
-              (SELECT COUNT(*) FROM likes WHERE post_id = p.post_id AND user_id = ?) AS user_liked
-              FROM posts p
-              JOIN users u ON p.user_id = u.user_id
-              WHERE p.user_id NOT IN (SELECT blocked_id FROM blocked_users WHERE blocker_id = ?)
-              ORDER BY p.created_at DESC
-              LIMIT 20";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("ii", $user_id, $user_id);
-    $stmt->execute();
-    $posts_result = $stmt->get_result();
-    $stmt->close();
-
-    // Handle post submission
     $post_message = '';
 
+    // Handle post submission first
     if (isset($_POST['create_post'])) {
-      $content = $_POST['content'] ?? ''; // Changed from post_content to content
+      $content = $_POST['content'] ?? '';
       $latitude = $_POST['latitude'] ?? null;
       $longitude = $_POST['longitude'] ?? null;
       $location_name = $_POST['location_name'] ?? null;
+      $image_path = null;
 
-      // Check if content is provided
+      // Validate content
       if (empty($content)) {
         $post_message = 'Post content cannot be empty.';
       } else {
         $content = sanitize_input($content);
-      }
-
-      // Post display loop (now properly separated)
-      while ($post = $posts_result->fetch_assoc()) {
-        echo "<div class='post'>";
-        $content = sanitize_input($content);
 
         // Handle image upload
-        $image_path = null;
-
         if (isset($_FILES['post_image']) && $_FILES['post_image']['error'] == 0) {
           $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
-          $max_size = 5 * 1024 * 1024; // 5 MB
+          $max_size = 5 * 1024 * 1024;
 
-          // Validate image file
           if (!in_array($_FILES['post_image']['type'], $allowed_types)) {
             $post_message = 'Only JPG, PNG and GIF images are allowed.';
           } elseif ($_FILES['post_image']['size'] > $max_size) {
-            $postmessage = 'Image size should not exceed 5 MB.';
+            $post_message = 'Image size should not exceed 5 MB.';
           } else {
-            // Create unique filename
-            $filename = uniqid() . '' . basename($_FILES['post_image']['name']);
+            $filename = uniqid() . '_' . basename($_FILES['post_image']['name']);
             $upload_dir = 'uploads/';
 
-            // Create directory if it doesn't exist
             if (!file_exists($upload_dir)) {
               mkdir($upload_dir, 0777, true);
             }
 
             $upload_path = $upload_dir . $filename;
-
             if (move_uploaded_file($_FILES['post_image']['tmp_name'], $upload_path)) {
               $image_path = $upload_path;
-            } else {
-              $post_message = 'Failed to upload image. Please try again.';
             }
           }
         }
 
-        // Post content
-        echo "<p>" . htmlspecialchars($post['content']) . "</p>";
-
-        // Add this section to display the post image
-        if (!empty($post['image'])) {
-          echo "<div class='post-image'>";
-          echo "<img src='" . htmlspecialchars($post['image']) . "' alt='Post image' class='post-img'>";
-          echo "</div>";
-        }
-
-        // Location info, like/comment buttons, etc...
-        echo "</div>";
-
-        // If no errors, create the post
+        // Create post if no errors
         if (empty($post_message)) {
           $result = create_post($user_id, $content, $image_path, $latitude, $longitude, $location_name);
-
           if ($result['status'] == 'success') {
-            // Redirect to avoid form resubmission
             header('Location: index.php?page=home&posted=1');
             exit;
-          } else {
-            $post_message = $result['message'];
           }
         }
       }
     }
 
-    // Get posts for the news feed
-    $query = "SELECT p.*, u.username, u.profile_pic,
+    // Display success message
+    if (isset($_GET['posted']) && $_GET['posted'] == '1') {
+      echo "<div class='success-message'>✅ Post submitted successfully!</div>";
+    }
+
+    // Get user info
+    $stmt = $conn->prepare("SELECT * FROM users WHERE user_id = ?");
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $user = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    echo "<div class='profile-info'>
+          <h2>{$user['username']}</h2>
+          <p>Email: {$user['email']}</p>
+        </div>
+        <div class='profile-actions'>
+          <button onclick='changePassword()'>Change Password</button>
+          <a href='index.php?page=logout' class='btn-logout'>Logout</a>
+        </div>";
+
+    // Get posts
+    $stmt = $conn->prepare("SELECT p.*, u.username, u.profile_pic,
+                        (SELECT COUNT(*) FROM likes WHERE post_id = p.post_id) AS like_count,
+                        (SELECT COUNT(*) FROM comments WHERE post_id = p.post_id) AS comment_count,
+                        (SELECT COUNT(*) FROM likes WHERE post_id = p.post_id AND user_id = ?) AS user_liked
+                        FROM posts p
+                        JOIN users u ON p.user_id = u.user_id
+                        WHERE p.user_id NOT IN (SELECT blocked_id FROM blocked_users WHERE blocker_id = ?)
+                        ORDER BY p.created_at DESC
+                        LIMIT 20");
+    $stmt->bind_param("ii", $user_id, $user_id);
+    $stmt->execute();
+    $posts_result = $stmt->get_result();
+
+    // Display posts
+    echo "<div class='debug-info'>📄 Found {$posts_result->num_rows} posts in database</div>";
+
+    if ($posts_result->num_rows > 0) {
+      while ($post = $posts_result->fetch_assoc()) {
+        echo "<div class='post'>
+                  <div class='post-header'>
+                    <img src='" . htmlspecialchars($post['profile_pic']) . "' class='post-avatar'>
+                    <h3>" . htmlspecialchars($post['username']) . "</h3>
+                  </div>
+                  <div class='post-content'>" . nl2br(htmlspecialchars($post['content'])) . "</div>";
+
+        if (!empty($post['image'])) {
+          echo "<img src='" . htmlspecialchars($post['image']) . "' class='post-image'>";
+        }
+
+        echo "</div>";
+      }
+    }
+
+    // Post creation form
+    echo '<form method="POST" enctype="multipart/form-data">
+          <textarea name="content" placeholder="What\'s on your mind?"></textarea>
+          <input type="file" name="post_image">
+          <button type="submit" name="create_post">Post</button>
+        </form>';
+
+    $stmt->close();
+  }
+
+  // Get posts for the news feed
+  $query = "SELECT p.*, u.username, u.profile_pic,
               (SELECT COUNT(*) FROM likes WHERE post_id = p.post_id) AS like_count,
               (SELECT COUNT(*) FROM comments WHERE post_id = p.post_id) AS comment_count,
               (SELECT COUNT(*) FROM likes WHERE post_id = p.post_id AND user_id = ?) AS user_liked
@@ -1700,13 +1711,13 @@ function include_header($page)
               WHERE p.user_id NOT IN (SELECT blocked_id FROM blocked_users WHERE blocker_id = ?)
               ORDER BY p.created_at DESC
               LIMIT 20";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("ii", $user_id, $user_id);
-    $stmt->execute();
-    $posts_result = $stmt->get_result();
-    $stmt->close();
+  $stmt = $conn->prepare($query);
+  $stmt->bind_param("ii", $user_id, $user_id);
+  $stmt->execute();
+  $posts_result = $stmt->get_result();
+  $stmt->close();
 
-    echo "<div class='create-post'>
+  echo "<div class='create-post'>
   <form action='index.php?page=home' method='post' enctype='multipart/form-data'>
     <textarea name='content' placeholder='What&#39;s on your mind?'></textarea>
     <div class='post-actions'>
@@ -1722,8 +1733,8 @@ function include_header($page)
   </form>
 </div>";
 
-    // Update the getLocation function
-    echo "<script>
+  // Update the getLocation function
+  echo "<script>
 function getLocation() {
     const status = document.getElementById('locationStatus');
     status.textContent = 'Getting location...';
@@ -1787,21 +1798,34 @@ function getLocation() {
 }
 </script>";
 
-    // Get online friends
-    $friends_query = "SELECT u.user_id, u.username, u.profile_pic
-                    FROM users u
-                    WHERE u.user_id != ?
-                    AND u.user_id NOT IN (
-                        SELECT blocked_id FROM blocked_users WHERE blocker_id = ?
-                    )
-                    LIMIT 5";
-    $friends_stmt = $conn->prepare($friends_query);
-    $friends_stmt->bind_param("ii", $user_id, $user_id);
-    $friends_stmt->execute();
-    $friends_result = $friends_stmt->get_result();
-    $friends_stmt->close(); // Add this line
-    // Home page HTML and functionality (as in your original code)
-    // ...
+  // Get online friends
+  $friends_query = "SELECT u.user_id, u.username, u.profile_pic
+FROM users u
+WHERE u.user_id != ?
+AND u.user_id NOT IN (
+    SELECT blocked_id FROM blocked_users WHERE blocker_id = ?
+)
+ORDER BY u.last_activity DESC
+LIMIT 5";
+
+  $friends_stmt = $conn->prepare($friends_query);
+  $friends_stmt->bind_param("ii", $user_id, $user_id);
+  $friends_stmt->execute();
+  $friends_result = $friends_stmt->get_result();
+  $online_friends = $friends_result->fetch_all(MYSQLI_ASSOC);
+  $friends_stmt->close();
+
+  // Display friends section
+  if (!empty($online_friends)) {
+    echo '<div class="online-friends">';
+    echo '<h4>Online Friends</h4>';
+    foreach ($online_friends as $friend) {
+      echo '<div class="friend">';
+      echo '<img src="' . htmlspecialchars($friend['profile_pic']) . '" alt="' . htmlspecialchars($friend['username']) . '">';
+      echo '<span>' . htmlspecialchars($friend['username']) . '</span>';
+      echo '</div>';
+    }
+    echo '</div>';
   }
 
   /**
