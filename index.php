@@ -1565,8 +1565,28 @@ function include_header($page)
             <input type="text" id="security_answer" name="security_answer" required placeholder="Enter your answer to the security question">
           </div>
 
+          // In your show_login_page() function, modify the registration form:
+
           <div class="form-group">
-            <button type="submit" name="register" class="btn btn-primary">Register</button>
+
+            <label>Register As:</label>
+
+            <div class="radio-group">
+
+              <label>
+
+                <input type="radio" name="reg_role" value="user" checked> User
+
+              </label>
+
+              <label>
+
+                <input type="radio" name="reg_role" value="admin"> Admin
+
+              </label>
+
+            </div>
+
           </div>
 
           <p class="form-toggle-link">Already have an account? <a href="#" id="show-login">Login now</a></p>
