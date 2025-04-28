@@ -1520,12 +1520,13 @@ function include_header($page)
   {
     global $conn;
     $user_id = $_SESSION['user_id'];
-    $user_query = "SELECT * FROM users WHERE user_id = ?";
-    $user_stmt = $conn->prepare($user_query);
-    $user_stmt->bind_param("i", $user_id);
-    $user_stmt->execute();
-    $user = $user_stmt->get_result()->fetch_assoc();
-    $username = $_SESSION['username'];
+    $query = "SELECT * FROM users WHERE user_id = ?";
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $user = $stmt->get_result()->fetch_assoc();
+    echo "<div class='profile-info'><h2>" . $user['username'] . "</h2><p>Email: " . $user['email'] . "</p></div>
+    <div class='profile-actions'><button onclick='changePassword()'>Change Password</button><a href='index.php?page=logout' class='btn-logout'>Logout</a></div>";
 
     // Handle post submission
     $post_message = '';
