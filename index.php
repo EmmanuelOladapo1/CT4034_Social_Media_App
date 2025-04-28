@@ -1636,8 +1636,16 @@ function include_header($page)
    */
   function show_profile_page()
   {
-    // Implement profile page display
-    echo "<div class='text-center p-20'><h2>Profile Page</h2><p>This page is under construction.</p></div>";
+    global $conn;
+    $user_id = $_SESSION['user_id'];
+    $query = "SELECT * FROM users WHERE user_id = ?";
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $user = $stmt->get_result()->fetch_assoc();
+    echo "<div class='profile-card'><img src='" . ($user['profile_pic'] ?: 'uploads/default.jpg') . "' alt='Profile' class='profile-icon'></div>
+  <div class='profile-info'><h2>" . $user['username'] . "</h2><p>Email: " . $user['email'] . "</p></div>
+  <div class='profile-actions'><button onclick='changePassword()'>Change Password</button><a href='index.php?page=logout' class='btn-logout'>Logout</a></div>";
   }
 
   function show_messages_page()
