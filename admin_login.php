@@ -28,7 +28,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $stmt->execute([$username]);
   $admin = $stmt->fetch();
 
-  if ($admin && password_verify($password, $admin['password'])) {
+  // FIXED: Changed from 'password' to 'password_hash' to match the column name
+  if ($admin && password_verify($password, $admin['password_hash'])) {
     // Set session variables for admin
     $_SESSION['admin_id'] = $admin['admin_id'];
     $_SESSION['admin_username'] = $admin['username'];
