@@ -1585,7 +1585,7 @@ function include_header($page)
     $post_message = '';
 
     if (isset($_POST['create_post'])) {
-      $content = $_POST['post_content'] ?? '';
+      $content = $_POST['content'] ?? ''; // Changed from post_content to content
       $latitude = $_POST['latitude'] ?? null;
       $longitude = $_POST['longitude'] ?? null;
       $location_name = $_POST['location_name'] ?? null;
@@ -1660,7 +1660,7 @@ function include_header($page)
     $stmt->close();
 
     echo "<div class='create-post'>
-  <form action='index.php?page=create_post' method='post' enctype='multipart/form-data'>
+  <form action='index.php?page=home' method='post' enctype='multipart/form-data'>
     <textarea name='content' placeholder='What&#39;s on your mind?'></textarea>
     <div class='post-actions'>
       <input type='file' name='post_image' id='post_image' accept='image/*'>
