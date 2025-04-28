@@ -1193,13 +1193,13 @@ function handle_ajax_request($endpoint)
 
     case 'send_message':
       // Send a message
-      if (!isset($_POST['receiver_id']) || !isset($_POST['content']) || empty($_POST['content'])) {
+      if (!isset($_POST['receiver']) || !isset($_POST['message']) || empty($_POST['message'])) {
         echo json_encode(['status' => 'error', 'message' => 'Receiver ID and message content are required']);
         exit;
       }
 
-      $receiver_id = (int)$_POST['receiver_id'];
-      $content = $_POST['content'];
+      $receiver_id = (int)$_POST['receiver'];
+      $content = $_POST['message'];
       $result = send_message($user_id, $receiver_id, $content);
       echo json_encode($result);
       break;
@@ -1666,7 +1666,7 @@ function include_header($page)
 
     echo "<div class='messages-container'><h2>Your Messages</h2>" . ($messages->num_rows > 0 ? "<div class='message-list'>" . implode('', array_map(function ($msg) {
       return "<div class='message'><strong>" . $msg['username'] . ":</strong> " . $msg['content'] . "</div>";
-    }, $messages->fetch_all(MYSQLI_ASSOC))) . "</div>" : "<p>No messages yet</p>") . "<form method='post' action='index.php?page=send_message'><input type='text' name='message' placeholder='Type a message'><input type='text' name='receiver' placeholder='Username'><button type='submit'>Send</button></form></div>";
+    }, $messages->fetch_all(MYSQLI_ASSOC))) . "</div>" : "<p>No messages yet</p>") . "<form method='post' action='index.php?page=send_message'><input type='text' name='content' placeholder='Type a message'><input type='text' name='receiver_id' placeholder='Username'><button type='submit'>Send</button></form></div>";
   }
 
   function show_admin_dashboard()
