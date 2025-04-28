@@ -23,9 +23,9 @@ if ($conn->connect_error) {
   die("Connection failed: " . $conn->connect_error);
 }
 
-/*****************************************
+/*
  * CORE FUNCTIONS SECTION
- *****************************************/
+ */
 
 /**
  * Function to sanitize user inputs
@@ -855,9 +855,9 @@ function get_user_profile_pic($user_id)
   return 'uploads/default.jpg';
 }
 
-/*****************************************
+/*
  * PAGE ROUTING SECTION
- *****************************************/
+ */
 
 // Check which file is being accessed
 $current_file = basename($_SERVER['SCRIPT_FILENAME']);
@@ -954,7 +954,8 @@ else {
         line-height: 1.6;
         margin: 0;
         padding: 20px;
-        background-color: #f0f2f5;
+        background-color:
+          #f0f2f5;
         color: #333;
       }
 
@@ -968,13 +969,15 @@ else {
       }
 
       h1 {
-        color: #1877f2;
+        color:
+          #1877f2;
         border-bottom: 1px solid #ddd;
         padding-bottom: 10px;
       }
 
       h2 {
-        color: #1877f2;
+        color:
+          #1877f2;
         margin-top: 30px;
       }
 
@@ -983,7 +986,8 @@ else {
       }
 
       .function {
-        background-color: #f7f7f7;
+        background-color:
+          #f7f7f7;
         padding: 15px;
         margin-bottom: 10px;
         border-left: 4px solid #1877f2;
@@ -1002,14 +1006,18 @@ else {
       }
 
       .success {
-        background-color: #e8f5e9;
-        color: #2e7d32;
+        background-color:
+          #e8f5e9;
+        color:
+          #2e7d32;
         border-left: 4px solid #2e7d32;
       }
 
       .error {
-        background-color: #ffebee;
-        color: #c62828;
+        background-color:
+          #ffebee;
+        color:
+          #c62828;
         border-left: 4px solid #c62828;
       }
 
@@ -1540,10 +1548,10 @@ function include_header($page)
           if (!in_array($_FILES['post_image']['type'], $allowed_types)) {
             $post_message = 'Only JPG, PNG and GIF images are allowed.';
           } elseif ($_FILES['post_image']['size'] > $max_size) {
-            $post_message = 'Image size should not exceed 5 MB.';
+            $postmessage = 'Image size should not exceed 5 MB.';
           } else {
             // Create unique filename
-            $filename = uniqid() . '_' . basename($_FILES['post_image']['name']);
+            $filename = uniqid() . '' . basename($_FILES['post_image']['name']);
             $upload_dir = 'uploads/';
 
             // Create directory if it doesn't exist
@@ -1577,10 +1585,10 @@ function include_header($page)
     }
 
     // Get posts for the news feed
-    $query = "SELECT p.*, u.username, u.profile_pic,
-              (SELECT COUNT(*) FROM likes WHERE post_id = p.post_id) AS like_count,
-              (SELECT COUNT(*) FROM comments WHERE post_id = p.post_id) AS comment_count,
-              (SELECT COUNT(*) FROM likes WHERE post_id = p.post_id AND user_id = ?) AS user_liked
+    $query = "SELECT p., u.username, u.profile_pic,
+              (SELECT COUNT() FROM likes WHERE post_id = p.post_id) AS like_count,
+              (SELECT COUNT() FROM comments WHERE post_id = p.post_id) AS comment_count,
+              (SELECT COUNT() FROM likes WHERE post_id = p.post_id AND user_id = ?) AS user_liked
               FROM posts p
               JOIN users u ON p.user_id = u.user_id
               WHERE p.user_id NOT IN (SELECT blocked_id FROM blocked_users WHERE blocker_id = ?)
@@ -1620,7 +1628,7 @@ function include_header($page)
     <p>The page you are looking for does not exist.</p>
     <a href="index.php" class="btn btn-primary">Go Home</a>
   </div>
-<?php
+  <?php
   }
 
   /**
@@ -1655,4 +1663,4 @@ function include_header($page)
     // Implement admin reports display
     echo "<div class='text-center p-20'><h2>Admin Reports</h2><p>This page is under construction.</p></div>";
   }
-?>
+  ?>'
