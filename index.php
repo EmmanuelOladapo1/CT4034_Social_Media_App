@@ -1691,6 +1691,18 @@ function include_header($page)
       }
     }
 
+    // Location information - Make sure this section is included
+    if (!empty($post['location_name'])) {
+      echo "<div class='post-location'>
+            <i class='fas fa-map-marker-alt'></i> " . htmlspecialchars($post['location_name']) . "
+          </div>";
+    } elseif (!empty($post['latitude']) && !empty($post['longitude'])) {
+      // If there's coordinates but no location name
+      echo "<div class='post-location'>
+            <i class='fas fa-map-marker-alt'></i> Location: " . round($post['latitude'], 4) . ", " . round($post['longitude'], 4) . "
+          </div>";
+    }
+
     // Post creation form
     echo '<form method="POST" enctype="multipart/form-data">
           <textarea name="content" placeholder="What\'s on your mind?"></textarea>
