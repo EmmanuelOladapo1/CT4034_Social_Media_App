@@ -1657,14 +1657,16 @@ function include_header($page)
   {
     global $conn;
     $user_id = $_SESSION['user_id'];
+    $profile_id = isset($_GET['id']) ? (int)$_GET['id'] : $user_id;
     $query = "SELECT * FROM users WHERE user_id = ?";
     $stmt = $conn->prepare($query);
-    $stmt->bind_param("i", $user_id);
+    $stmt->bind_param("i", $profile_id); // Changed to use profile_id instead of user_id
     $stmt->execute();
     $user = $stmt->get_result()->fetch_assoc();
+
     echo "<div class='profile-card'><img src='" . ($user['profile_pic'] ?: 'uploads/default.jpg') . "' alt='Profile' class='profile-icon'></div>
-  <div class='profile-info'><h2>" . $user['username'] . "</h2><p>Email: " . $user['email'] . "</p></div>
-  <div class='profile-actions'><button onclick='changePassword()'>Change Password</button><a href='index.php?page=logout' class='btn-logout'>Logout</a></div>";
+    <div class='profile-info'><h2>" . $user['username'] . "</h2><p>Email: " . $user['email'] . "</p></div>
+    <div class='profile-actions'>" . ($user_id == $profile_id ? "<button onclick='changePassword()'>Change Password</button><a href='index.php?page=logout' class='btn-logout'>Logout</a>" : "<a href='index.php?page=block_user&id={$profile_id}' class='btn-action'>Block User</a> <a href='#' onclick='showReportForm()' class='btn-action'>Report User</a>") . "</div>" . ($user_id != $profile_id ? "<form id='report-form' style='display:none' method='post' action='index.php?page=report_user'><input type='hidden' name='reported_id' value='{$profile_id}'><textarea name='reason' placeholder='Why are you reporting this user?'></textarea><button type='submit'>Submit</button></form>" : "");
   }
 
   function show_messages_page()
