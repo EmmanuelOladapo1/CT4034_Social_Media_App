@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Default credentials for display
 $default_login = [
   'username' => 'admin',
-  'password' => 'Admin123!'
+  'password' => 'Admin123'
 ];
 ?>
 
