@@ -1618,11 +1618,72 @@ function include_header($page)
     $stmt->execute();
 
     $posts_result = $stmt->get_result();
-    // Add form for creating posts with location
-    echo "<div class='create-post'><form method='post' action='index.php?page=home' enctype='multipart/form-data'><textarea name='content' placeholder='What&#39;s on your mind?'></textarea><div class='post-actions'><input type='file' name='post_image' id='post_image' accept='image/*'><label for='post_image'><i class='fas fa-image'></i> Photo</label><button type='button' onclick='getLocation()' class='location-btn'><i class='fas fa-map-marker-alt'></i> Add Location</button><input type='hidden' name='latitude' id='latitude'><input type='hidden' name='longitude' id='longitude'><input type='hidden' name='location_name' id='location_name'><div id='locationStatus'></div><button type='submit' name='create_post' class='btn-post'>Post</button></div></form></div>";
 
-    // Add JavaScript for location functionality using Nominatim API
-    echo "<script>function getLocation() {document.getElementById('locationStatus').textContent = 'Getting location...';if (navigator.geolocation) {navigator.geolocation.getCurrentPosition(function(position) {const lat = position.coords.latitude;const lng = position.coords.longitude;document.getElementById('latitude').value = lat;document.getElementById('longitude').value = lng;fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {headers: {'User-Agent': 'SocialNet/1.0'}}).then(response => response.json()).then(data => {const locationName = data.display_name || 'Unknown location';document.getElementById('location_name').value = locationName;document.getElementById('locationStatus').textContent = 'Location added: ' + locationName;document.getElementById('locationStatus').style.color = 'green';}).catch(error => {console.error('Error:', error);document.getElementById('locationStatus').textContent = 'Location added ✓';document.getElementById('locationStatus').style.color = 'green';});}, function(error) {document.getElementById('locationStatus').textContent = 'Error getting location: ' + error.message;document.getElementById('locationStatus').style.color = 'red';});} else {document.getElementById('locationStatus').textContent = 'Geolocation is not supported by this browser.';document.getElementById('locationStatus').style.color = 'red';}}</script>";
+    // Add form for creating posts with location
+    echo "<div class='bg-white p-4 rounded-lg shadow mb-4'>
+    <form action='index.php?page=home' method='POST' enctype='multipart/form-data' class='space-y-4'>
+        <textarea name='content' class='w-full p-2 border rounded' placeholder='What&#39;s on your mind?' required></textarea>
+        <div class='flex flex-wrap items-center gap-4'>
+            <div>
+                <input type='file' name='post_image' id='post_image' accept='image/*' class='border p-1'>
+                <p class='text-xs text-gray-500'>Max 2MB (JPEG, PNG)</p>
+            </div>
+            <button type='button' onclick='getLocation()' class='bg-gray-500 text-white px-4 py-2 rounded'>
+                Add Location
+            </button>
+            <span id='locationStatus' class='text-sm text-gray-600'></span>
+            <input type='hidden' name='latitude' id='latitude'>
+            <input type='hidden' name='longitude' id='longitude'>
+            <input type='hidden' name='location_name' id='location_name'>
+        </div>
+        <button type='submit' name='create_post' class='bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600'>Post</button>
+    </form>
+</div>";
+
+    // Add script for location functionality
+    echo "<script>
+function getLocation() {
+    const status = document.getElementById('locationStatus');
+    status.textContent = 'Getting location...';
+
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                document.getElementById('latitude').value = lat;
+                document.getElementById('longitude').value = lng;
+
+                // Get location name using reverse geocoding
+                fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {
+                    headers: {
+                        'User-Agent': 'SocialNet/1.0 (contact@example.com)'
+                    }
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        const locationName = data.display_name || 'Unknown location';
+                        document.getElementById('location_name').value = locationName;
+                        status.textContent = 'Location added: ' + locationName;
+                        status.style.color = 'green';
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        status.textContent = 'Location added ✓';
+                        status.style.color = 'green';
+                    });
+            },
+            function(error) {
+                status.textContent = 'Error getting location: ' + error.message;
+                status.style.color = 'red';
+            }
+        );
+    } else {
+        status.textContent = 'Geolocation is not supported by this browser.';
+        status.style.color = 'red';
+    }
+}
+</script>";
 
 
     // Get online friends
