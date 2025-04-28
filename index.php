@@ -1574,31 +1574,36 @@ function include_header($page)
             <input type="text" id="security_answer" name="security_answer" required placeholder="Enter your answer to the security question">
           </div>
 
-          // In your show_login_page() function, modify the registration form:
+          // Register As section
 
-          <div class="form-group">
+          echo "<div class='form-group'>
 
             <label>Register As:</label>
 
-            <div class="radio-group">
+            <div class='radio-group'>
 
               <label>
 
-                <input type="radio" name="reg_role" value="user" checked> User
+                <input type='radio' name='reg_role' value='user'" . (!isset($_POST['reg_role']) || $_POST['reg_role'] === 'user' ? " checked" : "" ) . "> User
 
-              </label>
+        </label>
 
-              <label>
+        <label>
 
-                <input type="radio" name="reg_role" value="admin"> Admin
+        <input type='radio' name='reg_role' value='admin'" . (isset($_POST['reg_role']) && $_POST['reg_role']==='admin' ? " checked" : "" ) . "> Admin
 
-              </label>
+      </label>
 
-            </div>
+    </div>
 
-          </div>
+  </div>" ;
 
-          <p class="form-toggle-link">Already have an account? <a href="#" id="show-login">Login now</a></p>
+                  // Add this button
+                  echo "<div class='form-group'>
+  <button type='submit' name='register' class='btn btn-primary'>Create Account</button>
+</div>" ;
+
+                  <p class="form-toggle-link">Already have an account? <a href="#" id="show-login">Login now</a></p>
         </form>
       </div>
     </div>
