@@ -1,9 +1,10 @@
 <?php
+// Start session only once at the beginning
 session_start();
 
 /**
- * core_functions.php
- * Contains all core functions and database connection for the social media platform
+ * Combined core_functions.php and index.php
+ * Contains all database functions and routing logic
  */
 
 // Database configuration
@@ -21,6 +22,10 @@ $conn = new mysqli($config['DB_HOST'], $config['DB_USER'], $config['DB_PASS'], $
 if ($conn->connect_error) {
   die("Connection failed: " . $conn->connect_error);
 }
+
+/*****************************************
+ * CORE FUNCTIONS SECTION
+ *****************************************/
 
 /**
  * Function to sanitize user inputs
@@ -809,9 +814,132 @@ function create_post($user_id, $content, $image_path = null, $latitude = null, $
   }
 }
 
-// Check if file is being accessed directly
-if (basename($_SERVER['SCRIPT_FILENAME']) == basename(__FILE__)) {
-  // This code only runs when the file is accessed directly, not when included
+/**
+ * Get count of unread messages for a user
+ *
+ * @param int $user_id - ID of the user
+ * @return int - Count of unread messages
+ */
+function get_unread_messages_count($user_id)
+{
+  global $conn;
+
+  $query = "SELECT COUNT(*) AS unread FROM messages WHERE receiver_id = ? AND is_read = 0";
+  $stmt = $conn->prepare($query);
+  $stmt->bind_param("i", $user_id);
+  $stmt->execute();
+  $result = $stmt->get_result();
+  return $result->fetch_assoc()['unread'];
+}
+
+/**
+ * Get user's profile picture
+ *
+ * @param int $user_id - ID of the user
+ * @return string - Path to profile picture
+ */
+function get_user_profile_pic($user_id)
+{
+  global $conn;
+
+  $query = "SELECT profile_pic FROM users WHERE user_id = ?";
+  $stmt = $conn->prepare($query);
+  $stmt->bind_param("i", $user_id);
+  $stmt->execute();
+  $result = $stmt->get_result();
+
+  if ($row = $result->fetch_assoc()) {
+    return $row['profile_pic'] ?: 'uploads/default.jpg';
+  }
+
+  return 'uploads/default.jpg';
+}
+
+/*****************************************
+ * PAGE ROUTING SECTION
+ *****************************************/
+
+// Check which file is being accessed
+$current_file = basename($_SERVER['SCRIPT_FILENAME']);
+
+// Only run the routing code if this file is accessed as index.php
+if ($current_file == 'index.php') {
+  // Basic router
+  $page = isset($_GET['page']) ? sanitize_input($_GET['page']) : 'login';
+
+  // Check authentication for protected pages
+  $protected_pages = ['home', 'profile', 'messages', 'friends', 'settings'];
+  $admin_pages = ['admin_dashboard', 'admin_users', 'admin_reports'];
+
+  if (in_array($page, $protected_pages) && !is_logged_in()) {
+    // Redirect to login if trying to access protected page without being logged in
+    header('Location: index.php?page=login');
+    exit;
+  }
+
+  if (in_array($page, $admin_pages) && !is_admin()) {
+    // Redirect to login if trying to access admin page without admin privileges
+    header('Location: index.php?page=login&error=unauthorized');
+    exit;
+  }
+
+  // If user is logged in and tries to access login page, redirect to home
+  if ($page === 'login' && is_logged_in()) {
+    if (is_admin()) {
+      header('Location: index.php?page=admin_dashboard');
+    } else {
+      header('Location: index.php?page=home');
+    }
+    exit;
+  }
+
+  // Handle AJAX requests
+  $ajax_endpoints = ['like_post', 'add_comment', 'get_comments', 'report_user', 'block_user', 'send_message'];
+  if (in_array($page, $ajax_endpoints)) {
+    handle_ajax_request($page);
+    exit;
+  }
+
+  // Include the HTML header
+  include_header($page);
+
+  // Route to appropriate page display function
+  switch ($page) {
+    case 'login':
+      show_login_page();
+      break;
+    case 'home':
+      show_home_page();
+      break;
+    case 'profile':
+      show_profile_page();
+      break;
+    case 'messages':
+      show_messages_page();
+      break;
+    case 'admin_dashboard':
+      show_admin_dashboard();
+      break;
+    case 'admin_users':
+      show_admin_users();
+      break;
+    case 'admin_reports':
+      show_admin_reports();
+      break;
+    case 'logout':
+      logout_user();
+      break;
+    default:
+      show_404_page();
+      break;
+  }
+
+  // Include the HTML footer
+  include_footer();
+}
+// If accessed directly (as core_functions.php)
+else {
+  // Display the core functions documentation page
 ?>
   <!DOCTYPE html>
   <html lang="en">
@@ -972,4 +1100,559 @@ if (basename($_SERVER['SCRIPT_FILENAME']) == basename(__FILE__)) {
   </html>
 <?php
 }
+
+/**
+ * Handle AJAX requests
+ */
+function handle_ajax_request($endpoint)
+{
+  global $conn;
+
+  // Check if user is logged in for all AJAX requests
+  if (!is_logged_in()) {
+    echo json_encode([
+      'status' => 'error',
+      'message' => 'You must be logged in to perform this action.'
+    ]);
+    exit;
+  }
+
+  $user_id = $_SESSION['user_id'];
+
+  switch ($endpoint) {
+    case 'like_post':
+      // Like/unlike a post
+      if (!isset($_POST['post_id'])) {
+        echo json_encode(['status' => 'error', 'message' => 'Post ID is required']);
+        exit;
+      }
+
+      $post_id = (int)$_POST['post_id'];
+      $result = toggle_like($post_id, $user_id);
+      echo json_encode($result);
+      break;
+
+    case 'add_comment':
+      // Add a comment to a post
+      if (!isset($_POST['post_id']) || !isset($_POST['content']) || empty($_POST['content'])) {
+        echo json_encode(['status' => 'error', 'message' => 'Post ID and comment content are required']);
+        exit;
+      }
+
+      $post_id = (int)$_POST['post_id'];
+      $content = $_POST['content'];
+      $result = add_comment($post_id, $user_id, $content);
+      echo json_encode($result);
+      break;
+
+    case 'get_comments':
+      // Get comments for a post
+      if (!isset($_GET['post_id'])) {
+        echo json_encode(['status' => 'error', 'message' => 'Post ID is required']);
+        exit;
+      }
+
+      $post_id = (int)$_GET['post_id'];
+      $result = get_comments($post_id);
+      echo json_encode($result);
+      break;
+
+    case 'report_user':
+      // Report a user
+      if (!isset($_POST['reported_id']) || !isset($_POST['reason']) || empty($_POST['reason'])) {
+        echo json_encode(['status' => 'error', 'message' => 'Reported user ID and reason are required']);
+        exit;
+      }
+
+      $reported_id = (int)$_POST['reported_id'];
+      $reason = $_POST['reason'];
+      $result = report_user($user_id, $reported_id, $reason);
+      echo json_encode($result);
+      break;
+
+    case 'block_user':
+      // Block/unblock a user
+      if (!isset($_POST['user_id']) || !isset($_POST['action'])) {
+        echo json_encode(['status' => 'error', 'message' => 'User ID and action are required']);
+        exit;
+      }
+
+      $blocked_id = (int)$_POST['user_id'];
+      $action = $_POST['action'];
+      $result = manage_block($user_id, $blocked_id, $action);
+      echo json_encode($result);
+      break;
+
+    case 'send_message':
+      // Send a message
+      if (!isset($_POST['receiver_id']) || !isset($_POST['content']) || empty($_POST['content'])) {
+        echo json_encode(['status' => 'error', 'message' => 'Receiver ID and message content are required']);
+        exit;
+      }
+
+      $receiver_id = (int)$_POST['receiver_id'];
+      $content = $_POST['content'];
+      $result = send_message($user_id, $receiver_id, $content);
+      echo json_encode($result);
+      break;
+
+    default:
+      echo json_encode(['status' => 'error', 'message' => 'Invalid endpoint']);
+  }
+}
+
+/**
+ * Include the appropriate header based on the page
+ */
+function include_header($page)
+{
+  // Common HTML header with appropriate title based on page
+  $title = "SocialConnect";
+
+  switch ($page) {
+    case 'login':
+      $title .= " - Login";
+      break;
+    case 'home':
+      $title .= " - Home";
+      break;
+    case 'profile':
+      $title .= " - Profile";
+      break;
+    case 'messages':
+      $title .= " - Messages";
+      break;
+    case 'admin_dashboard':
+      $title .= " - Admin Dashboard";
+      break;
+    default:
+      $title .= " - " . ucfirst($page);
+  }
+
+?>
+  <!DOCTYPE html>
+  <html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?php echo $title; ?></title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Include jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <?php if (in_array($page, ['home'])): ?>
+      <!-- Include Google Maps API for posts with location -->
+      <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places"></script>
+    <?php endif; ?>
+  </head>
+
+  <body>
+    <div class="container">
+      <?php if (is_logged_in() && $page !== 'login'): ?>
+        <!-- Navigation Bar for logged-in users -->
+        <nav class="navbar">
+          <a href="index.php?page=home" class="navbar-brand">SocialConnect</a>
+          <ul class="navbar-nav">
+            <li class="nav-item">
+              <a href="index.php?page=messages">
+                <i class="fas fa-envelope"></i>
+                <?php
+                // Check for unread messages
+                $user_id = $_SESSION['user_id'];
+                $unread_messages = get_unread_messages_count($user_id);
+                if ($unread_messages > 0):
+                ?>
+                  <span class="unread-badge"><?php echo $unread_messages; ?></span>
+                <?php endif; ?>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="index.php?page=profile">
+                <?php
+                $profile_pic = get_user_profile_pic($_SESSION['user_id']);
+                ?>
+                <img src="<?php echo $profile_pic; ?>" alt="Profile" class="profile-pic">
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="index.php?page=logout" class="btn btn-secondary">Logout</a>
+            </li>
+          </ul>
+        </nav>
+      <?php endif; ?>
+    <?php
+  }
+
+  /**
+   * Include the footer HTML
+   */
+  function include_footer()
+  {
+    ?>
+      <footer class="main-footer">
+        <p>&copy; <?php echo date('Y'); ?> SocialConnect. All rights reserved.</p>
+      </footer>
+    </div>
+  </body>
+
+  </html>
+<?php
+  }
+
+  /**
+   * Show the login/registration page
+   */
+  function show_login_page()
+  {
+    // Initialize variables for form data and error messages
+    $login_error = '';
+    $register_error = '';
+    $register_success = '';
+
+    // Handle login form submission
+    if (isset($_POST['login'])) {
+      $username = $_POST['username'] ?? '';
+      $password = $_POST['password'] ?? '';
+      $role = $_POST['role'] ?? 'user';
+
+      if (empty($username) || empty($password)) {
+        $login_error = 'Please enter both username and password.';
+      } else {
+        // Handle login based on role
+        if ($role == 'admin') {
+          $result = admin_login($username, $password);
+        } else {
+          $result = login_user($username, $password);
+        }
+
+        if ($result['status'] == 'success') {
+          // Redirect to appropriate dashboard
+          if ($role == 'admin') {
+            header('Location: index.php?page=admin_dashboard');
+          } else {
+            header('Location: index.php?page=home');
+          }
+          exit;
+        } else {
+          $login_error = $result['message'];
+        }
+      }
+    }
+
+    // Handle registration form submission
+    if (isset($_POST['register'])) {
+      $username = $_POST['reg_username'] ?? '';
+      $email = $_POST['reg_email'] ?? '';
+      $password = $_POST['reg_password'] ?? '';
+      $confirm_password = $_POST['reg_confirm_password'] ?? '';
+      $full_name = $_POST['reg_full_name'] ?? '';
+      $security_question = $_POST['security_question'] ?? '';
+      $security_answer = $_POST['security_answer'] ?? '';
+
+      // Validate inputs
+      if (
+        empty($username) || empty($email) || empty($password) || empty($confirm_password) ||
+        empty($full_name) || empty($security_question) || empty($security_answer)
+      ) {
+        $register_error = 'Please fill all required fields.';
+      } elseif ($password != $confirm_password) {
+        $register_error = 'Passwords do not match.';
+      } elseif (strlen($password) < 8) {
+        $register_error = 'Password must be at least 8 characters long.';
+      } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $register_error = 'Please enter a valid email address.';
+      } else {
+        // Register the user
+        $result = register_user($username, $email, $password, $full_name, $security_question, $security_answer);
+
+        if ($result['status'] == 'success') {
+          $register_success = $result['message'];
+        } else {
+          $register_error = $result['message'];
+        }
+      }
+    }
+
+    // Display the login/registration form
+?>
+  <header class="main-header">
+    <h1>SocialConnect</h1>
+    <p>Connect with friends, share moments, and stay updated.</p>
+  </header>
+
+  <main class="auth-container">
+    <div class="forms-container">
+      <!-- Login Form -->
+      <div class="form-box login-form">
+        <h2>Login</h2>
+        <?php if (!empty($login_error)): ?>
+          <div class="error-message"><?php echo $login_error; ?></div>
+        <?php endif; ?>
+
+        <form action="index.php?page=login" method="post">
+          <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" required>
+          </div>
+
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required>
+          </div>
+
+          <div class="form-group">
+            <label>Login As:</label>
+            <div class="radio-group">
+              <label>
+                <input type="radio" name="role" value="user" checked> User
+              </label>
+              <label>
+                <input type="radio" name="role" value="admin"> Admin
+              </label>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <button type="submit" name="login" class="btn btn-primary">Login</button>
+          </div>
+
+          <p class="form-toggle-link">Don't have an account? <a href="#" id="show-register">Register now</a></p>
+        </form>
+      </div>
+
+      <!-- Registration Form -->
+      <div class="form-box register-form" style="display: none;">
+        <h2>Create an Account</h2>
+        <?php if (!empty($register_error)): ?>
+          <div class="error-message"><?php echo $register_error; ?></div>
+        <?php endif; ?>
+
+        <?php if (!empty($register_success)): ?>
+          <div class="success-message"><?php echo $register_success; ?></div>
+        <?php endif; ?>
+
+        <form action="index.php?page=login" method="post">
+          <div class="form-group">
+            <label for="reg_username">Username</label>
+            <input type="text" id="reg_username" name="reg_username" required>
+          </div>
+
+          <div class="form-group">
+            <label for="reg_email">Email</label>
+            <input type="email" id="reg_email" name="reg_email" required>
+          </div>
+
+          <div class="form-group">
+            <label for="reg_full_name">Full Name</label>
+            <input type="text" id="reg_full_name" name="reg_full_name" required>
+          </div>
+
+          <div class="form-group">
+            <label for="reg_password">Password</label>
+            <input type="password" id="reg_password" name="reg_password" required>
+            <small>Password must be at least 8 characters long</small>
+          </div>
+
+          <div class="form-group">
+            <label for="reg_confirm_password">Confirm Password</label>
+            <input type="password" id="reg_confirm_password" name="reg_confirm_password" required>
+          </div>
+
+          <div class="form-group">
+            <label for="security_question">Security Question</label>
+            <input type="text" id="security_question" name="security_question" required placeholder="Enter a security question for account recovery">
+          </div>
+
+          <div class="form-group">
+            <label for="security_answer">Security Answer</label>
+            <input type="text" id="security_answer" name="security_answer" required placeholder="Enter your answer to the security question">
+          </div>
+
+          <div class="form-group">
+            <button type="submit" name="register" class="btn btn-primary">Register</button>
+          </div>
+
+          <p class="form-toggle-link">Already have an account? <a href="#" id="show-login">Login now</a></p>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    $(document).ready(function() {
+      // Toggle between login and registration forms
+      $('#show-register').click(function(e) {
+        e.preventDefault();
+        $('.login-form').hide();
+        $('.register-form').show();
+      });
+
+      $('#show-login').click(function(e) {
+        e.preventDefault();
+        $('.register-form').hide();
+        $('.login-form').show();
+      });
+
+      // Show register form if there was an error or success message
+      <?php if (!empty($register_error) || !empty($register_success)): ?>
+        $('.login-form').hide();
+        $('.register-form').show();
+      <?php endif; ?>
+    });
+  </script>
+<?php
+  }
+
+  /**
+   * Show the home page with news feed
+   */
+  function show_home_page()
+  {
+    global $conn;
+    $user_id = $_SESSION['user_id'];
+    $username = $_SESSION['username'];
+
+    // Handle post submission
+    $post_message = '';
+
+    if (isset($_POST['create_post'])) {
+      $content = $_POST['post_content'] ?? '';
+      $latitude = $_POST['latitude'] ?? null;
+      $longitude = $_POST['longitude'] ?? null;
+      $location_name = $_POST['location_name'] ?? null;
+
+      // Check if content is provided
+      if (empty($content)) {
+        $post_message = 'Post content cannot be empty.';
+      } else {
+        $content = sanitize_input($content);
+
+        // Handle image upload
+        $image_path = null;
+
+        if (isset($_FILES['post_image']) && $_FILES['post_image']['error'] == 0) {
+          $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
+          $max_size = 5 * 1024 * 1024; // 5 MB
+
+          // Validate image file
+          if (!in_array($_FILES['post_image']['type'], $allowed_types)) {
+            $post_message = 'Only JPG, PNG and GIF images are allowed.';
+          } elseif ($_FILES['post_image']['size'] > $max_size) {
+            $post_message = 'Image size should not exceed 5 MB.';
+          } else {
+            // Create unique filename
+            $filename = uniqid() . '_' . basename($_FILES['post_image']['name']);
+            $upload_dir = 'uploads/';
+
+            // Create directory if it doesn't exist
+            if (!file_exists($upload_dir)) {
+              mkdir($upload_dir, 0777, true);
+            }
+
+            $upload_path = $upload_dir . $filename;
+
+            if (move_uploaded_file($_FILES['post_image']['tmp_name'], $upload_path)) {
+              $image_path = $upload_path;
+            } else {
+              $post_message = 'Failed to upload image. Please try again.';
+            }
+          }
+        }
+
+        // If no errors, create the post
+        if (empty($post_message)) {
+          $result = create_post($user_id, $content, $image_path, $latitude, $longitude, $location_name);
+
+          if ($result['status'] == 'success') {
+            // Redirect to avoid form resubmission
+            header('Location: index.php?page=home&posted=1');
+            exit;
+          } else {
+            $post_message = $result['message'];
+          }
+        }
+      }
+    }
+
+    // Get posts for the news feed
+    $query = "SELECT p.*, u.username, u.profile_pic,
+              (SELECT COUNT(*) FROM likes WHERE post_id = p.post_id) AS like_count,
+              (SELECT COUNT(*) FROM comments WHERE post_id = p.post_id) AS comment_count,
+              (SELECT COUNT(*) FROM likes WHERE post_id = p.post_id AND user_id = ?) AS user_liked
+              FROM posts p
+              JOIN users u ON p.user_id = u.user_id
+              WHERE p.user_id NOT IN (SELECT blocked_id FROM blocked_users WHERE blocker_id = ?)
+              ORDER BY p.created_at DESC
+              LIMIT 20";
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("ii", $user_id, $user_id);
+    $stmt->execute();
+    $posts_result = $stmt->get_result();
+
+    // Get online friends
+    $friends_query = "SELECT u.user_id, u.username, u.profile_pic
+                    FROM users u
+                    WHERE u.user_id != ?
+                    AND u.user_id NOT IN (
+                        SELECT blocked_id FROM blocked_users WHERE blocker_id = ?
+                    )
+                    LIMIT 5";
+    $friends_stmt = $conn->prepare($friends_query);
+    $friends_stmt->bind_param("ii", $user_id, $user_id);
+    $friends_stmt->execute();
+    $friends_result = $friends_stmt->get_result();
+
+    // Home page HTML and functionality (as in your original code)
+    // ...
+  }
+
+  /**
+   * Show 404 page not found
+   */
+  function show_404_page()
+  {
+?>
+  <div class="error-container text-center">
+    <h1>404</h1>
+    <h2>Page Not Found</h2>
+    <p>The page you are looking for does not exist.</p>
+    <a href="index.php" class="btn btn-primary">Go Home</a>
+  </div>
+<?php
+  }
+
+  /**
+   * Placeholder functions for other pages - implement these as needed
+   */
+  function show_profile_page()
+  {
+    // Implement profile page display
+    echo "<div class='text-center p-20'><h2>Profile Page</h2><p>This page is under construction.</p></div>";
+  }
+
+  function show_messages_page()
+  {
+    // Implement messages page display
+    echo "<div class='text-center p-20'><h2>Messages Page</h2><p>This page is under construction.</p></div>";
+  }
+
+  function show_admin_dashboard()
+  {
+    // Implement admin dashboard display
+    echo "<div class='text-center p-20'><h2>Admin Dashboard</h2><p>This page is under construction.</p></div>";
+  }
+
+  function show_admin_users()
+  {
+    // Implement admin users management display
+    echo "<div class='text-center p-20'><h2>Admin Users Management</h2><p>This page is under construction.</p></div>";
+  }
+
+  function show_admin_reports()
+  {
+    // Implement admin reports display
+    echo "<div class='text-center p-20'><h2>Admin Reports</h2><p>This page is under construction.</p></div>";
+  }
 ?>
