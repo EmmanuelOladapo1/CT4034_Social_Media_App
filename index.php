@@ -124,7 +124,7 @@ function redirect($location)
  * @param string $security_answer - Answer to the security question
  * @return array - Status and message of the registration process
  */
-function register_user($username, $email, $password, $full_name, $security_question, $security_answer)
+function register_user($username, $email, $password, $full_name, $security_question, $security_answer, $role = 'user')
 {
   global $conn;
 
@@ -134,6 +134,14 @@ function register_user($username, $email, $password, $full_name, $security_quest
   $full_name = sanitize_input($full_name);
   $security_question = sanitize_input($security_question);
   $security_answer = sanitize_input($security_answer);
+  $role = sanitize_input($role);
+
+  // Make sure role is either 'user' or 'admin'
+  if ($role !== 'user' && $role !== 'admin') {
+    $role = 'user'; // Default to user if invalid role
+  }
+
+
 
   // Check if username already exists
   $query = "SELECT user_id FROM users WHERE username = ?";
@@ -166,10 +174,10 @@ function register_user($username, $email, $password, $full_name, $security_quest
   // Hash password for security
   $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
-  // Insert new user into the database
   $query = "INSERT INTO users (username, email, password, full_name, role, security_question, security_answer)
-              VALUES (?, ?, ?, ?, 'user', ?, ?)";
+            VALUES (?, ?, ?, ?, ?, ?, ?)";
   $stmt = $conn->prepare($query);
+  $stmt->bind_param("sssssss", $username, $email, $hashed_password, $full_name, $role, $security_question, $security_answer);
   $stmt->bind_param("ssssss", $username, $email, $hashed_password, $full_name, $security_question, $security_answer);
 
   if ($stmt->execute()) {
