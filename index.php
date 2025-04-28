@@ -1655,7 +1655,7 @@ function getLocation() {
                 document.getElementById('longitude').value = lng;
 
                 // Get location name using reverse geocoding
-                fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {
+                fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + lat + '&lon=' + lng + '&zoom=18&addressdetails=1', {
                     headers: {
                         'User-Agent': 'SocialNet/1.0 (contact@example.com)'
                     }
