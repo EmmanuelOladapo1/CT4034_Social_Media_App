@@ -8,7 +8,7 @@ $stmt->execute();
 if ($stmt->fetchColumn() == 0) {
   // Create admin account with password "admin123"
   $hashedPassword = password_hash('admin123', PASSWORD_DEFAULT);
-  $stmt = $conn->prepare("INSERT INTO admins (username, email, password, full_name, created_at)
+  $stmt = $conn->prepare("INSERT INTO admins (username, email, password_hash, full_name, created_at)
                          VALUES ('admin', 'admin@example.com', ?, 'Administrator', NOW())");
   $stmt->execute([$hashedPassword]);
   echo "Admin account created successfully.<br>";
