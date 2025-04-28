@@ -1027,6 +1027,20 @@ else {
         color: #666;
         font-size: 0.9em;
       }
+
+      #location-map {
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        z-index: 10;
+      }
+
+      .location-btn {
+        background: none;
+        border: none;
+        color: #1877f2;
+        cursor: pointer;
+        font-size: 14px;
+      }
     </style>
   </head>
 
@@ -1264,8 +1278,8 @@ function include_header($page)
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <?php if (in_array($page, ['home'])): ?>
-      <!-- Include Google Maps API for posts with location -->
-      <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places"></script>
+      <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+      <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <?php endif; ?>
   </head>
 
@@ -1618,46 +1632,11 @@ function include_header($page)
     $stmt->execute();
 
     $posts_result = $stmt->get_result();
+    // Add form for creating posts with location
+    echo "<div class='create-post'><form method='post' action='index.php?page=home' enctype='multipart/form-data'><textarea name='content' placeholder='What&#39;s on your mind?'></textarea><div class='post-actions'><input type='file' name='post_image' id='post_image' accept='image/*'><label for='post_image'><i class='fas fa-image'></i> Photo</label><button type='button' onclick='getLocation()' class='location-btn'><i class='fas fa-map-marker-alt'></i> Add Location</button><input type='hidden' name='latitude' id='latitude'><input type='hidden' name='longitude' id='longitude'><input type='hidden' name='location_name' id='location_name'><button type='submit' name='create_post' class='btn-post'>Post</button></div></form><div id='location-map' style='display:none;height:200px;margin-top:10px;'></div></div>";
 
-    // Function to get location with OpenWeather API in a separate function
-    echo "<script>
-function getLocation() {
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      function(position) {
-        const lat = position.coords.latitude;
-        const lon = position.coords.longitude;
-        document.getElementById('latitude').value = lat;
-        document.getElementById('longitude').value = lon;
-
-        fetch('https://api.openweathermap.org/data/2.5/weather?lat='+lat+'&lon='+lon+'&appid=1b5e33126888a1e2a9b55f5fb88bd2fe')
-          .then(response => {
-            if (!response.ok) throw new Error('API request failed');
-            return response.json();
-          })
-          .then(data => {
-            console.log('API Response:', data);
-            const locationName = data.name || 'Unknown Location';
-            document.getElementById('location_name').value = locationName;
-            alert('Location added: ' + locationName);
-          })
-          .catch(error => {
-            console.error('Error:', error);
-            document.getElementById('location_name').value = 'Unknown Location';
-            alert('Location added (no name available)');
-          });
-      },
-      function(error) {
-        console.error('Geolocation error:', error);
-        alert('Could not fetch your location.');
-      }
-    );
-  } else {
-    alert('Geolocation is not supported by this browser.');
-  }
-}
-</script>";
-
+    // Add JavaScript for location and map functionality
+    echo "<script>var map; var marker; function getLocation(){if(navigator.geolocation){navigator.geolocation.getCurrentPosition(function(position){const lat=position.coords.latitude;const lon=position.coords.longitude;document.getElementById('latitude').value=lat;document.getElementById('longitude').value=lon;fetch('http://api.openweathermap.org/geo/1.0/reverse?lat='+lat+'&lon='+lon+'&limit=1&appid=1b5e33126888a1e2a9b55f5fb88bd2fe').then(r=>r.json()).then(data=>{if(data && data.length>0){const locationName=data[0].name+(data[0].state?', '+data[0].state:'');document.getElementById('location_name').value=locationName;alert('Location added: '+locationName);initializeMap(lat,lon,locationName);}else{document.getElementById('location_name').value='Unknown Location';}}).catch(e=>{document.getElementById('location_name').value='Unknown Location';});})}function initializeMap(lat,lon,locationName){document.getElementById('location-map').style.display='block';if(!map){map=L.map('location-map').setView([lat,lon],13);L.tileLayer('https://{s}.tile.o penstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap contributors'}).addTo(map);marker=L.marker([lat,lon]).addTo(map).bindPopup(locationName||'Your location');}else{map.setView([lat,lon],13);marker.setLatLng([lat,lon]).bindPopup(locationName||'Your location');}}</script>";
 
 
     // Get online friends
