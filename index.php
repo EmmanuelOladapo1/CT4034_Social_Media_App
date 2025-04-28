@@ -1538,6 +1538,7 @@ function include_header($page)
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $user = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
     echo "<div class='profile-info'><h2>" . $user['username'] . "</h2><p>Email: " . $user['email'] . "</p></div>
     <div class='profile-actions'><button onclick='changePassword()'>Change Password</button><a href='index.php?page=logout' class='btn-logout'>Logout</a></div>";
     echo "<form method='post' action='index.php?page=create_post' enctype='multipart/form-data'><textarea name='content' placeholder='What&#39;s on your mind?'></textarea><div class='post-actions'><input type='file' name='post_image' id='post_image' accept='image/*'><label for='post_image'><i class='fas fa-image'></i> Photo</label><button type='button' onclick='getLocation()' class='location-btn'><i class='fas fa-map-marker-alt'></i> Location</button><input type='hidden' name='latitude' id='latitude'><input type='hidden' name='longitude' id='longitude'><input type='hidden' name='location_name' id='location_name'><button type='submit' name='create_post' class='btn-post'>Post</button></div><script>function getLocation(){if(navigator.geolocation){navigator.geolocation.getCurrentPosition(function(position){document.getElementById(\"latitude\").value=position.coords.latitude;document.getElementById(\"longitude\").value=position.coords.longitude;fetch(\"https://api.openweathermap.org/data/2.5/weather?lat=\"+position.coords.latitude+\"&lon=\"+position.coords.longitude+\"&appid=1b5e33126888a1e2a9b55f5fb88bd2fe\").then(r=>r.json()).then(data=>{document.getElementById(\"location_name\").value=data.name;alert(\"Location added: \"+data.name);});})}}</script></form>";
@@ -1616,10 +1617,8 @@ function include_header($page)
     $stmt = $conn->prepare($query);
     $stmt->bind_param("ii", $user_id, $user_id);
     $stmt->execute();
-
     $posts_result = $stmt->get_result();
-
-    $posts_result = $stmt->get_result();
+    $stmt->close();
 
     // Create post form with integrated location functionality
     echo "<div class='create-post'>
@@ -1638,7 +1637,7 @@ function include_header($page)
   </form>
 </div>";
 
-    // Add script for location functionality
+    // Update the getLocation function
     echo "<script>
 function getLocation() {
     const status = document.getElementById('locationStatus');
@@ -1649,31 +1648,51 @@ function getLocation() {
             function(position) {
                 const lat = position.coords.latitude;
                 const lng = position.coords.longitude;
+
+                // Always set the coordinates in the form
                 document.getElementById('latitude').value = lat;
                 document.getElementById('longitude').value = lng;
 
-                // Get location name using reverse geocoding
-                fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + lat + '&lon=' + lng + '&zoom=18&addressdetails=1', {
-                    headers: {
-                        'User-Agent': 'SocialNet/1.0 (contact@example.com)'
-                    }
-                })
-                    .then(response => response.json())
+                try {
+                    // Get location name using reverse geocoding
+                    fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + lat + '&lon=' + lng + '&zoom=18&addressdetails=1', {
+                        headers: {
+                            'User-Agent': 'SocialNet/1.0'
+                        }
+                    })
+                    .then(response => {
+                        if (!response.ok) throw new Error('Network response was not ok');
+                        return response.json();
+                    })
                     .then(data => {
-                        const locationName = data.display_name || 'Unknown location';
+                        console.log('Location data:', data); // Debug output
+                        const locationName = data && data.display_name ? data.display_name : 'Unknown location';
                         document.getElementById('location_name').value = locationName;
                         status.textContent = 'Location added: ' + locationName;
                         status.style.color = 'green';
                     })
                     .catch(error => {
-                        console.error('Error:', error);
-                        status.textContent = 'Location added ✓';
+                        console.error('Error fetching location name:', error);
+                        document.getElementById('location_name').value = 'Unknown location';
+                        status.textContent = 'Location added (name unavailable)';
                         status.style.color = 'green';
                     });
+                } catch (error) {
+                    console.error('Error in fetch operation:', error);
+                    document.getElementById('location_name').value = 'Unknown location';
+                    status.textContent = 'Location added (fetch error)';
+                    status.style.color = 'green';
+                }
             },
             function(error) {
+                console.error('Geolocation error:', error);
                 status.textContent = 'Error getting location: ' + error.message;
                 status.style.color = 'red';
+            },
+            {
+                timeout: 10000, // 10 seconds timeout
+                maximumAge: 0,
+                enableHighAccuracy: true
             }
         );
     } else {
@@ -1682,7 +1701,6 @@ function getLocation() {
     }
 }
 </script>";
-
 
     // Get online friends
     $friends_query = "SELECT u.user_id, u.username, u.profile_pic
@@ -1696,7 +1714,7 @@ function getLocation() {
     $friends_stmt->bind_param("ii", $user_id, $user_id);
     $friends_stmt->execute();
     $friends_result = $friends_stmt->get_result();
-
+    $friends_stmt->close(); // Add this line
     // Home page HTML and functionality (as in your original code)
     // ...
   }
