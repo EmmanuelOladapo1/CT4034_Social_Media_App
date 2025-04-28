@@ -1658,10 +1658,7 @@ function getLocation() {
 }
 </script>";
 
-    // Add form for creating posts
-    echo "<div class='create-post'><form method='post' action='index.php?page=home' enctype='multipart/form-data'><textarea name='content' placeholder='What&#39;s on your mind?'></textarea><div class='post-actions'><input type='file' name='post_image' id='post_image' accept='image/*'><label for='post_image'><i class='fas fa-image'></i> Photo</label><button type='button' onclick='getLocation()' class='location-btn'><i class='fas fa-map-marker-alt'></i> Add Location</button><input type='hidden' name='latitude' id='latitude'><input type='hidden' name='longitude' id='longitude'><input type='hidden' name='location_name' id='location_name'><button type='submit' name='create_post' class='btn-post'>Post</button></div></form></div>";
 
-    // Continue with the rest of your function...
 
     // Get online friends
     $friends_query = "SELECT u.user_id, u.username, u.profile_pic
