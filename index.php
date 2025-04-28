@@ -1027,20 +1027,6 @@ else {
         color: #666;
         font-size: 0.9em;
       }
-
-      #location-map {
-        border-radius: 8px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        z-index: 10;
-      }
-
-      .location-btn {
-        background: none;
-        border: none;
-        color: #1877f2;
-        cursor: pointer;
-        font-size: 14px;
-      }
     </style>
   </head>
 
@@ -1633,10 +1619,10 @@ function include_header($page)
 
     $posts_result = $stmt->get_result();
     // Add form for creating posts with location
-    echo "<div class='create-post'><form method='post' action='index.php?page=home' enctype='multipart/form-data'><textarea name='content' placeholder='What&#39;s on your mind?'></textarea><div class='post-actions'><input type='file' name='post_image' id='post_image' accept='image/*'><label for='post_image'><i class='fas fa-image'></i> Photo</label><button type='button' onclick='getLocation()' class='location-btn'><i class='fas fa-map-marker-alt'></i> Add Location</button><input type='hidden' name='latitude' id='latitude'><input type='hidden' name='longitude' id='longitude'><input type='hidden' name='location_name' id='location_name'><button type='submit' name='create_post' class='btn-post'>Post</button></div></form><div id='location-map' style='display:none;height:200px;margin-top:10px;'></div></div>";
+    echo "<div class='create-post'><form method='post' action='index.php?page=home' enctype='multipart/form-data'><textarea name='content' placeholder='What&#39;s on your mind?'></textarea><div class='post-actions'><input type='file' name='post_image' id='post_image' accept='image/*'><label for='post_image'><i class='fas fa-image'></i> Photo</label><button type='button' onclick='getLocation()' class='location-btn'><i class='fas fa-map-marker-alt'></i> Add Location</button><input type='hidden' name='latitude' id='latitude'><input type='hidden' name='longitude' id='longitude'><input type='hidden' name='location_name' id='location_name'><div id='locationStatus'></div><button type='submit' name='create_post' class='btn-post'>Post</button></div></form></div>";
 
-    // Add JavaScript for location and map functionality
-    echo "<script>var map; var marker; function getLocation(){if(navigator.geolocation){navigator.geolocation.getCurrentPosition(function(position){const lat=position.coords.latitude;const lon=position.coords.longitude;document.getElementById('latitude').value=lat;document.getElementById('longitude').value=lon;fetch('http://api.openweathermap.org/geo/1.0/reverse?lat='+lat+'&lon='+lon+'&limit=1&appid=1b5e33126888a1e2a9b55f5fb88bd2fe').then(r=>r.json()).then(data=>{if(data && data.length>0){const locationName=data[0].name+(data[0].state?', '+data[0].state:'');document.getElementById('location_name').value=locationName;alert('Location added: '+locationName);initializeMap(lat,lon,locationName);}else{document.getElementById('location_name').value='Unknown Location';}}).catch(e=>{document.getElementById('location_name').value='Unknown Location';});})}function initializeMap(lat,lon,locationName){document.getElementById('location-map').style.display='block';if(!map){map=L.map('location-map').setView([lat,lon],13);L.tileLayer('https://{s}.tile.o penstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap contributors'}).addTo(map);marker=L.marker([lat,lon]).addTo(map).bindPopup(locationName||'Your location');}else{map.setView([lat,lon],13);marker.setLatLng([lat,lon]).bindPopup(locationName||'Your location');}}</script>";
+    // Add JavaScript for location functionality using Nominatim API
+    echo "<script>function getLocation() {document.getElementById('locationStatus').textContent = 'Getting location...';if (navigator.geolocation) {navigator.geolocation.getCurrentPosition(function(position) {const lat = position.coords.latitude;const lng = position.coords.longitude;document.getElementById('latitude').value = lat;document.getElementById('longitude').value = lng;fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {headers: {'User-Agent': 'SocialNet/1.0'}}).then(response => response.json()).then(data => {const locationName = data.display_name || 'Unknown location';document.getElementById('location_name').value = locationName;document.getElementById('locationStatus').textContent = 'Location added: ' + locationName;document.getElementById('locationStatus').style.color = 'green';}).catch(error => {console.error('Error:', error);document.getElementById('locationStatus').textContent = 'Location added ✓';document.getElementById('locationStatus').style.color = 'green';});}, function(error) {document.getElementById('locationStatus').textContent = 'Error getting location: ' + error.message;document.getElementById('locationStatus').style.color = 'red';});} else {document.getElementById('locationStatus').textContent = 'Geolocation is not supported by this browser.';document.getElementById('locationStatus').style.color = 'red';}}</script>";
 
 
     // Get online friends
