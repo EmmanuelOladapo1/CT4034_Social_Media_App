@@ -1453,6 +1453,7 @@ function include_header($page)
       $full_name = $_POST['reg_full_name'] ?? '';
       $security_question = $_POST['security_question'] ?? '';
       $security_answer = $_POST['security_answer'] ?? '';
+      $role = $_POST['reg_role'] ?? 'user';
 
       // Validate inputs
       if (
@@ -1468,7 +1469,7 @@ function include_header($page)
         $register_error = 'Please enter a valid email address.';
       } else {
         // Register the user
-        $result = register_user($username, $email, $password, $full_name, $security_question, $security_answer);
+        $result = register_user($username, $email, $password, $full_name, $security_question, $security_answer, $role);
 
         if ($result['status'] == 'success') {
           $register_success = $result['message'];
