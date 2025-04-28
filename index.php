@@ -1027,6 +1027,18 @@ else {
         color: #666;
         font-size: 0.9em;
       }
+
+      .post-image {
+       margin: 10px 0;
+       text-align: center;
+      }
+
+      .post-img {
+       max-width: 100%;
+       max-height: 400px;
+      border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
     </style>
   </head>
 
@@ -1593,7 +1605,13 @@ function include_header($page)
       // Check if content is provided
       if (empty($content)) {
         $post_message = 'Post content cannot be empty.';
-      } else {
+    } else {
+        $content = sanitize_input($content);
+    }
+
+    // Post display loop (now properly separated)
+    while ($post = $posts_result->fetch_assoc()) {
+        echo "<div class='post'>";
         $content = sanitize_input($content);
 
         // Handle image upload
@@ -1627,6 +1645,20 @@ function include_header($page)
             }
           }
         }
+
+        // Post content
+         echo "<p>" . htmlspecialchars($post['content']) . "</p>";
+
+      // Add this section to display the post image
+    if (!empty($post['image'])) {
+      echo "<div class='post-image'>";
+      echo "<img src='" . htmlspecialchars($post['image']) . "' alt='Post image' class='post-img'>";
+      echo "</div>";
+  }
+
+  // Location info, like/comment buttons, etc...
+  echo "</div>";
+}
 
         // If no errors, create the post
         if (empty($post_message)) {
