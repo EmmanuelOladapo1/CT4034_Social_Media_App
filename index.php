@@ -1193,12 +1193,25 @@ function handle_ajax_request($endpoint)
 
     case 'send_message':
       // Send a message
-      if (!isset($_POST['receiver_id']) || !isset($_POST['content']) || empty($_POST['content'])) {
-        echo json_encode(['status' => 'error', 'message' => 'Receiver ID and message content are required']);
+      if (!isset($_POST['username']) || !isset($_POST['content']) || empty($_POST['content'])) {
+        echo json_encode(['status' => 'error', 'message' => 'Recipient username and message content are required']);
         exit;
       }
 
-      $receiver_id = (int)$_POST['username'];
+      // Look up user ID from username
+      $username = sanitize_input($_POST['username']);
+      $user_query = "SELECT user_id FROM users WHERE username = ?";
+      $user_stmt = $conn->prepare($user_query);
+      $user_stmt->bind_param("s", $username);
+      $user_stmt->execute();
+      $user_result = $user_stmt->get_result();
+
+      if ($user_result->num_rows === 0) {
+        echo json_encode(['status' => 'error', 'message' => 'User not found']);
+        exit;
+      }
+
+      $receiver_id = $user_result->fetch_assoc()['user_id'];
       $content = $_POST['content'];
       $result = send_message($user_id, $receiver_id, $content);
       echo json_encode($result);
