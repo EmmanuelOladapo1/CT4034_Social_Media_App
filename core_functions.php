@@ -1,18 +1,21 @@
 <?php
+session_start();
 
 /**
- * db_connection.php
- * Database connection and utility functions
+ * core_functions.php
+ * Contains all core functions and database connection for the social media platform
  */
 
-// Database credentials
-$host = "localhost:3306";
-$username = "s4413678_db"; // Change this to your actual database username
-$password = "7q0fe22B~"; // Change this to your actual database password
-$database = "social_media_db";
+// Database configuration
+$config = [
+  'DB_HOST' => 'localhost',
+  'DB_NAME' => 's4413678_db',
+  'DB_USER' => 'admin_social',
+  'DB_PASS' => '7q0fe22B~'
+];
 
-// Create connection
-$conn = new mysqli($host, $username, $password, $database);
+// Create database connection
+$conn = new mysqli($config['DB_HOST'], $config['DB_USER'], $config['DB_PASS'], $config['DB_NAME']);
 
 // Check connection
 if ($conn->connect_error) {
@@ -104,18 +107,6 @@ function redirect($location)
   header("Location: " . $location);
   exit;
 }
-?>
-<?php
-/**
- * auth.php
- * Authentication System for Social Media Platform
- */
-
-// Start session
-session_start();
-
-// Include database connection
-require_once 'db_connection.php';
 
 /**
  * Function to register a new user
@@ -273,8 +264,7 @@ function logout_user()
 }
 
 /**
- * Function to verify admin login with hardcoded password
- * Note: For better security, this should be replaced with database authentication
+ * Function to verify admin login
  *
  * @param string $username - Admin username
  * @param string $password - Admin password
@@ -321,257 +311,500 @@ function admin_login($username, $password)
     ];
   }
 }
-?>
-<?php
+
 /**
- * index.php
- * Entry point for the social media application
+ * Function to handle liking/unliking posts
+ *
+ * @param int $post_id - ID of the post to like/unlike
+ * @param int $user_id - ID of the user performing the action
+ * @return array - Status, message, and updated like count
  */
+function toggle_like($post_id, $user_id)
+{
+  global $conn;
 
-// Start session and include necessary files
-session_start();
-require_once 'db_connection.php';
-require_once 'auth.php';
+  // Check if user already liked the post
+  $check_query = "SELECT like_id FROM likes WHERE post_id = ? AND user_id = ?";
+  $check_stmt = $conn->prepare($check_query);
+  $check_stmt->bind_param("ii", $post_id, $user_id);
+  $check_stmt->execute();
+  $check_result = $check_stmt->get_result();
 
-// Check if user is already logged in
-if (isset($_SESSION['user_id'])) {
-  // Redirect to appropriate dashboard
-  if ($_SESSION['role'] == 'admin') {
-    redirect('admin_dashboard.php');
-  } else {
-    redirect('home.php');
-  }
-}
+  if ($check_result->num_rows > 0) {
+    // User already liked the post, so unlike it
+    $unlike_query = "DELETE FROM likes WHERE post_id = ? AND user_id = ?";
+    $unlike_stmt = $conn->prepare($unlike_query);
+    $unlike_stmt->bind_param("ii", $post_id, $user_id);
 
-// Initialize variables for form data and error messages
-$login_error = '';
-$register_error = '';
-$register_success = '';
+    if ($unlike_stmt->execute()) {
+      // Get updated like count
+      $count_query = "SELECT COUNT(*) AS like_count FROM likes WHERE post_id = ?";
+      $count_stmt = $conn->prepare($count_query);
+      $count_stmt->bind_param("i", $post_id);
+      $count_stmt->execute();
+      $count_result = $count_stmt->get_result();
+      $like_count = $count_result->fetch_assoc()['like_count'];
 
-// Handle login form submission
-if (isset($_POST['login'])) {
-  $username = $_POST['username'] ?? '';
-  $password = $_POST['password'] ?? '';
-  $role = $_POST['role'] ?? 'user';
-
-  if (empty($username) || empty($password)) {
-    $login_error = 'Please enter both username and password.';
-  } else {
-    // Handle login based on role
-    if ($role == 'admin') {
-      $result = admin_login($username, $password);
+      return [
+        'status' => 'success',
+        'message' => 'Post unliked successfully.',
+        'liked' => false,
+        'like_count' => $like_count
+      ];
     } else {
-      $result = login_user($username, $password);
+      return [
+        'status' => 'error',
+        'message' => 'Failed to unlike post.'
+      ];
     }
-
-    if ($result['status'] == 'success') {
-      // Redirect to appropriate dashboard
-      if ($role == 'admin') {
-        redirect('admin_dashboard.php');
-      } else {
-        redirect('home.php');
-      }
-    } else {
-      $login_error = $result['message'];
-    }
-  }
-}
-
-// Handle registration form submission
-if (isset($_POST['register'])) {
-  $username = $_POST['reg_username'] ?? '';
-  $email = $_POST['reg_email'] ?? '';
-  $password = $_POST['reg_password'] ?? '';
-  $confirm_password = $_POST['reg_confirm_password'] ?? '';
-  $full_name = $_POST['reg_full_name'] ?? '';
-  $security_question = $_POST['security_question'] ?? '';
-  $security_answer = $_POST['security_answer'] ?? '';
-
-  // Validate inputs
-  if (
-    empty($username) || empty($email) || empty($password) || empty($confirm_password) ||
-    empty($full_name) || empty($security_question) || empty($security_answer)
-  ) {
-    $register_error = 'Please fill all required fields.';
-  } elseif ($password != $confirm_password) {
-    $register_error = 'Passwords do not match.';
-  } elseif (strlen($password) < 8) {
-    $register_error = 'Password must be at least 8 characters long.';
-  } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    $register_error = 'Please enter a valid email address.';
   } else {
-    // Register the user
-    $result = register_user($username, $email, $password, $full_name, $security_question, $security_answer);
+    // User has not liked the post, so like it
+    $like_query = "INSERT INTO likes (post_id, user_id) VALUES (?, ?)";
+    $like_stmt = $conn->prepare($like_query);
+    $like_stmt->bind_param("ii", $post_id, $user_id);
 
-    if ($result['status'] == 'success') {
-      $register_success = $result['message'];
+    if ($like_stmt->execute()) {
+      // Get updated like count
+      $count_query = "SELECT COUNT(*) AS like_count FROM likes WHERE post_id = ?";
+      $count_stmt = $conn->prepare($count_query);
+      $count_stmt->bind_param("i", $post_id);
+      $count_stmt->execute();
+      $count_result = $count_stmt->get_result();
+      $like_count = $count_result->fetch_assoc()['like_count'];
+
+      return [
+        'status' => 'success',
+        'message' => 'Post liked successfully.',
+        'liked' => true,
+        'like_count' => $like_count
+      ];
     } else {
-      $register_error = $result['message'];
+      return [
+        'status' => 'error',
+        'message' => 'Failed to like post.'
+      ];
     }
   }
 }
-?>
 
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SocialConnect - Connect with Friends</title>
-  <link rel="stylesheet" href="css/style.css">
-  <!-- Include jQuery -->
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-</head>
-
-<body>
-  <div class="container">
-    <header class="main-header">
-      <h1>SocialConnect</h1>
-      <p>Connect with friends, share moments, and stay updated.</p>
-    </header>
-
-    <main class="auth-container">
-      <div class="forms-container">
-        <!-- Login Form -->
-        <div class="form-box login-form">
-          <h2>Login</h2>
-          <?php if (!empty($login_error)): ?>
-            <div class="error-message"><?php echo $login_error; ?></div>
-          <?php endif; ?>
-
-          <form action="index.php" method="post">
-            <div class="form-group">
-              <label for="username">Username</label>
-              <input type="text" id="username" name="username" required>
-            </div>
-
-            <div class="form-group">
-              <label for="password">Password</label>
-              <input type="password" id="password" name="password" required>
-            </div>
-
-            <div class="form-group">
-              <label>Login As:</label>
-              <div class="radio-group">
-                <label>
-                  <input type="radio" name="role" value="user" checked> User
-                </label>
-                <label>
-                  <input type="radio" name="role" value="admin"> Admin
-                </label>
-              </div>
-            </div>
-
-            <div class="form-group">
-              <button type="submit" name="login" class="btn btn-primary">Login</button>
-            </div>
-
-            <p class="form-toggle-link">Don't have an account? <a href="#" id="show-register">Register now</a></p>
-          </form>
-        </div>
-
-        <!-- Registration Form -->
-        <div class="form-box register-form" style="display: none;">
-          <h2>Create an Account</h2>
-          <?php if (!empty($register_error)): ?>
-            <div class="error-message"><?php echo $register_error; ?></div>
-          <?php endif; ?>
-
-          <?php if (!empty($register_success)): ?>
-            <div class="success-message"><?php echo $register_success; ?></div>
-          <?php endif; ?>
-
-          <form action="index.php" method="post">
-            <div class="form-group">
-              <label for="reg_username">Username</label>
-              <input type="text" id="reg_username" name="reg_username" required>
-            </div>
-
-            <div class="form-group">
-              <label for="reg_email">Email</label>
-              <input type="email" id="reg_email" name="reg_email" required>
-            </div>
-
-            <div class="form-group">
-              <label for="reg_full_name">Full Name</label>
-              <input type="text" id="reg_full_name" name="reg_full_name" required>
-            </div>
-
-            <div class="form-group">
-              <label for="reg_password">Password</label>
-              <input type="password" id="reg_password" name="reg_password" required>
-              <small>Password must be at least 8 characters long</small>
-            </div>
-
-            <div class="form-group">
-              <label for="reg_confirm_password">Confirm Password</label>
-              <input type="password" id="reg_confirm_password" name="reg_confirm_password" required>
-            </div>
-
-            <div class="form-group">
-              <label for="security_question">Security Question</label>
-              <input type="text" id="security_question" name="security_question" required placeholder="Enter a security question for account recovery">
-            </div>
-
-            <div class="form-group">
-              <label for="security_answer">Security Answer</label>
-              <input type="text" id="security_answer" name="security_answer" required placeholder="Enter your answer to the security question">
-            </div>
-
-            <div class="form-group">
-              <button type="submit" name="register" class="btn btn-primary">Register</button>
-            </div>
-
-            <p class="form-toggle-link">Already have an account? <a href="#" id="show-login">Login now</a></p>
-          </form>
-        </div>
-      </div>
-    </main>
-
-    <footer class="main-footer">
-      <p>&copy; <?php echo date('Y'); ?> SocialConnect. All rights reserved.</p>
-    </footer>
-  </div>
-
-  <script>
-    $(document).ready(function() {
-      // Toggle between login and registration forms
-      $('#show-register').click(function(e) {
-        e.preventDefault();
-        $('.login-form').hide();
-        $('.register-form').show();
-      });
-
-      $('#show-login').click(function(e) {
-        e.preventDefault();
-        $('.register-form').hide();
-        $('.login-form').show();
-      });
-
-      // Show register form if there was an error or success message
-      <?php if (!empty($register_error) || !empty($register_success)): ?>
-        $('.login-form').hide();
-        $('.register-form').show();
-      <?php endif; ?>
-    });
-  </script>
-</body>
-
-</html>
-<?php
 /**
- * logout.php
- * Handles user logout
+ * Function to add a comment to a post
+ *
+ * @param int $post_id - ID of the post to comment on
+ * @param int $user_id - ID of the user adding the comment
+ * @param string $content - Content of the comment
+ * @return array - Status, message, and updated comment count
  */
+function add_comment($post_id, $user_id, $content)
+{
+  global $conn;
 
-// Start session
-session_start();
+  // Sanitize comment content
+  $content = sanitize_input($content);
 
-// Include necessary files
-require_once 'db_connection.php';
-require_once 'auth.php';
+  // Add the comment
+  $query = "INSERT INTO comments (post_id, user_id, content) VALUES (?, ?, ?)";
+  $stmt = $conn->prepare($query);
+  $stmt->bind_param("iis", $post_id, $user_id, $content);
 
-// Call the logout function
-logout_user();
-?>
+  if ($stmt->execute()) {
+    // Get updated comment count
+    $count_query = "SELECT COUNT(*) AS comment_count FROM comments WHERE post_id = ?";
+    $count_stmt = $conn->prepare($count_query);
+    $count_stmt->bind_param("i", $post_id);
+    $count_stmt->execute();
+    $count_result = $count_stmt->get_result();
+    $comment_count = $count_result->fetch_assoc()['comment_count'];
+
+    return [
+      'status' => 'success',
+      'message' => 'Comment added successfully.',
+      'comment_count' => $comment_count
+    ];
+  } else {
+    return [
+      'status' => 'error',
+      'message' => 'Failed to add comment.'
+    ];
+  }
+}
+
+/**
+ * Function to get comments for a post
+ *
+ * @param int $post_id - ID of the post to get comments for
+ * @return array - Comments with user information
+ */
+function get_comments($post_id)
+{
+  global $conn;
+
+  // Get comments for the post
+  $query = "SELECT c.*, u.username, u.profile_pic
+              FROM comments c
+              JOIN users u ON c.user_id = u.user_id
+              WHERE c.post_id = ?
+              ORDER BY c.created_at ASC";
+  $stmt = $conn->prepare($query);
+  $stmt->bind_param("i", $post_id);
+  $stmt->execute();
+  $result = $stmt->get_result();
+
+  $comments = [];
+
+  while ($row = $result->fetch_assoc()) {
+    // Calculate time ago
+    $comment_date = new DateTime($row['created_at']);
+    $now = new DateTime();
+    $interval = $comment_date->diff($now);
+
+    if ($interval->y > 0) {
+      $time_ago = $interval->y . ' year' . ($interval->y > 1 ? 's' : '') . ' ago';
+    } elseif ($interval->m > 0) {
+      $time_ago = $interval->m . ' month' . ($interval->m > 1 ? 's' : '') . ' ago';
+    } elseif ($interval->d > 0) {
+      $time_ago = $interval->d . ' day' . ($interval->d > 1 ? 's' : '') . ' ago';
+    } elseif ($interval->h > 0) {
+      $time_ago = $interval->h . ' hour' . ($interval->h > 1 ? 's' : '') . ' ago';
+    } elseif ($interval->i > 0) {
+      $time_ago = $interval->i . ' minute' . ($interval->i > 1 ? 's' : '') . ' ago';
+    } else {
+      $time_ago = 'Just now';
+    }
+
+    $comments[] = [
+      'comment_id' => $row['comment_id'],
+      'user_id' => $row['user_id'],
+      'username' => $row['username'],
+      'profile_pic' => $row['profile_pic'],
+      'content' => $row['content'],
+      'created_at' => $row['created_at'],
+      'time_ago' => $time_ago
+    ];
+  }
+
+  return [
+    'status' => 'success',
+    'comments' => $comments
+  ];
+}
+
+/**
+ * Function to report a user
+ *
+ * @param int $reporter_id - ID of the user reporting
+ * @param int $reported_id - ID of the user being reported
+ * @param string $reason - Reason for the report
+ * @return array - Status and message
+ */
+function report_user($reporter_id, $reported_id, $reason)
+{
+  global $conn;
+
+  // Sanitize reason
+  $reason = sanitize_input($reason);
+
+  // Prevent reporting yourself
+  if ($reporter_id == $reported_id) {
+    return [
+      'status' => 'error',
+      'message' => 'You cannot report yourself.'
+    ];
+  }
+
+  // Add the report
+  $query = "INSERT INTO reports (reporter_id, reported_id, reason) VALUES (?, ?, ?)";
+  $stmt = $conn->prepare($query);
+  $stmt->bind_param("iis", $reporter_id, $reported_id, $reason);
+
+  if ($stmt->execute()) {
+    return [
+      'status' => 'success',
+      'message' => 'User reported successfully.'
+    ];
+  } else {
+    return [
+      'status' => 'error',
+      'message' => 'Failed to report user.'
+    ];
+  }
+}
+
+/**
+ * Function to block/unblock a user
+ *
+ * @param int $blocker_id - ID of the user doing the blocking
+ * @param int $blocked_id - ID of the user being blocked
+ * @param string $action - 'block' or 'unblock'
+ * @return array - Status and message
+ */
+function manage_block($blocker_id, $blocked_id, $action)
+{
+  global $conn;
+
+  // Prevent blocking yourself
+  if ($blocker_id == $blocked_id) {
+    return [
+      'status' => 'error',
+      'message' => 'You cannot block yourself.'
+    ];
+  }
+
+  if ($action == 'block') {
+    // Check if already blocked
+    $check_query = "SELECT block_id FROM blocked_users WHERE blocker_id = ? AND blocked_id = ?";
+    $check_stmt = $conn->prepare($check_query);
+    $check_stmt->bind_param("ii", $blocker_id, $blocked_id);
+    $check_stmt->execute();
+    $check_result = $check_stmt->get_result();
+
+    if ($check_result->num_rows > 0) {
+      return [
+        'status' => 'error',
+        'message' => 'User is already blocked.'
+      ];
+    }
+
+    // Block the user
+    $block_query = "INSERT INTO blocked_users (blocker_id, blocked_id) VALUES (?, ?)";
+    $block_stmt = $conn->prepare($block_query);
+    $block_stmt->bind_param("ii", $blocker_id, $blocked_id);
+
+    if ($block_stmt->execute()) {
+      return [
+        'status' => 'success',
+        'message' => 'User blocked successfully.'
+      ];
+    } else {
+      return [
+        'status' => 'error',
+        'message' => 'Failed to block user.'
+      ];
+    }
+  } elseif ($action == 'unblock') {
+    // Unblock the user
+    $unblock_query = "DELETE FROM blocked_users WHERE blocker_id = ? AND blocked_id = ?";
+    $unblock_stmt = $conn->prepare($unblock_query);
+    $unblock_stmt->bind_param("ii", $blocker_id, $blocked_id);
+
+    if ($unblock_stmt->execute()) {
+      return [
+        'status' => 'success',
+        'message' => 'User unblocked successfully.'
+      ];
+    } else {
+      return [
+        'status' => 'error',
+        'message' => 'Failed to unblock user.'
+      ];
+    }
+  } else {
+    return [
+      'status' => 'error',
+      'message' => 'Invalid action. Must be "block" or "unblock".'
+    ];
+  }
+}
+
+/**
+ * Function for admin to block a user for a specific duration
+ *
+ * @param int $user_id - ID of the user to block
+ * @param int $days - Number of days to block the user
+ * @return array - Status and message
+ */
+function admin_block_user($user_id, $days)
+{
+  global $conn;
+
+  // Calculate block end date
+  $block_end = date('Y-m-d H:i:s', strtotime("+$days days"));
+
+  // Block the user
+  $block_query = "UPDATE users SET is_blocked = TRUE, block_end_date = ? WHERE user_id = ?";
+  $block_stmt = $conn->prepare($block_query);
+  $block_stmt->bind_param("si", $block_end, $user_id);
+
+  if ($block_stmt->execute()) {
+    return [
+      'status' => 'success',
+      'message' => "User blocked successfully until $block_end."
+    ];
+  } else {
+    return [
+      'status' => 'error',
+      'message' => 'Failed to block user.'
+    ];
+  }
+}
+
+/**
+ * Function for admin to delete a user
+ *
+ * @param int $user_id - ID of the user to delete
+ * @param int $admin_id - ID of the admin performing the action
+ * @return array - Status and message
+ */
+function admin_delete_user($user_id, $admin_id)
+{
+  global $conn;
+
+  // Prevent deleting yourself
+  if ($user_id == $admin_id) {
+    return [
+      'status' => 'error',
+      'message' => 'You cannot delete your own admin account.'
+    ];
+  }
+
+  // Delete the user
+  $delete_query = "DELETE FROM users WHERE user_id = ?";
+  $delete_stmt = $conn->prepare($delete_query);
+  $delete_stmt->bind_param("i", $user_id);
+
+  if ($delete_stmt->execute()) {
+    return [
+      'status' => 'success',
+      'message' => 'User deleted successfully.'
+    ];
+  } else {
+    return [
+      'status' => 'error',
+      'message' => 'Failed to delete user.'
+    ];
+  }
+}
+
+/**
+ * Function for admin to resolve a report
+ *
+ * @param int $report_id - ID of the report to resolve
+ * @return array - Status and message
+ */
+function admin_resolve_report($report_id)
+{
+  global $conn;
+
+  // Mark report as resolved
+  $resolve_query = "UPDATE reports SET status = 'resolved' WHERE report_id = ?";
+  $resolve_stmt = $conn->prepare($resolve_query);
+  $resolve_stmt->bind_param("i", $report_id);
+
+  if ($resolve_stmt->execute()) {
+    return [
+      'status' => 'success',
+      'message' => 'Report marked as resolved.'
+    ];
+  } else {
+    return [
+      'status' => 'error',
+      'message' => 'Failed to resolve report.'
+    ];
+  }
+}
+
+/**
+ * Function to send a message between users
+ *
+ * @param int $sender_id - ID of the user sending the message
+ * @param int $receiver_id - ID of the user receiving the message
+ * @param string $content - Content of the message
+ * @return array - Status and message
+ */
+function send_message($sender_id, $receiver_id, $content)
+{
+  global $conn;
+
+  // Sanitize message content
+  $content = sanitize_input($content);
+
+  // Check if users are blocked
+  $block_check_query = "SELECT block_id FROM blocked_users
+                         WHERE (blocker_id = ? AND blocked_id = ?)
+                            OR (blocker_id = ? AND blocked_id = ?)";
+  $block_check_stmt = $conn->prepare($block_check_query);
+  $block_check_stmt->bind_param("iiii", $sender_id, $receiver_id, $receiver_id, $sender_id);
+  $block_check_stmt->execute();
+  $block_check_result = $block_check_stmt->get_result();
+
+  if ($block_check_result->num_rows > 0) {
+    return [
+      'status' => 'error',
+      'message' => 'Cannot send message. User is blocked.'
+    ];
+  }
+
+  // Send the message
+  $query = "INSERT INTO messages (sender_id, receiver_id, content) VALUES (?, ?, ?)";
+  $stmt = $conn->prepare($query);
+  $stmt->bind_param("iis", $sender_id, $receiver_id, $content);
+
+  if ($stmt->execute()) {
+    return [
+      'status' => 'success',
+      'message' => 'Message sent successfully.'
+    ];
+  } else {
+    return [
+      'status' => 'error',
+      'message' => 'Failed to send message.'
+    ];
+  }
+}
+
+/**
+ * Function to mark messages as read
+ *
+ * @param int $sender_id - ID of the message sender
+ * @param int $receiver_id - ID of the message receiver
+ * @return boolean - True if successful, false otherwise
+ */
+function mark_messages_read($sender_id, $receiver_id)
+{
+  global $conn;
+
+  $query = "UPDATE messages SET is_read = 1
+              WHERE sender_id = ? AND receiver_id = ? AND is_read = 0";
+  $stmt = $conn->prepare($query);
+  $stmt->bind_param("ii", $sender_id, $receiver_id);
+
+  return $stmt->execute();
+}
+
+/**
+ * Function to create a new post
+ *
+ * @param int $user_id - ID of the user creating the post
+ * @param string $content - Content of the post
+ * @param string $image_path - Path to the uploaded image (optional)
+ * @param float $latitude - Latitude of the post location (optional)
+ * @param float $longitude - Longitude of the post location (optional)
+ * @param string $location_name - Name of the post location (optional)
+ * @return array - Status and message
+ */
+function create_post($user_id, $content, $image_path = null, $latitude = null, $longitude = null, $location_name = null)
+{
+  global $conn;
+
+  // Sanitize inputs
+  $content = sanitize_input($content);
+  $location_name = $location_name ? sanitize_input($location_name) : null;
+
+  // Create the post
+  $query = "INSERT INTO posts (user_id, content, image, latitude, longitude, location_name)
+              VALUES (?, ?, ?, ?, ?, ?)";
+  $stmt = $conn->prepare($query);
+  $stmt->bind_param("issdds", $user_id, $content, $image_path, $latitude, $longitude, $location_name);
+
+  if ($stmt->execute()) {
+    return [
+      'status' => 'success',
+      'message' => 'Post created successfully!'
+    ];
+  } else {
+    return [
+      'status' => 'error',
+      'message' => 'Failed to create post. Please try again.'
+    ];
+  }
+}
