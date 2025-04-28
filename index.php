@@ -1585,7 +1585,7 @@ function include_header($page)
     }
 
     // Get posts for the news feed
-    $query = "SELECT p., u.username, u.profile_pic,
+    $query = "SELECT p.*, u.username, u.profile_pic,
               (SELECT COUNT() FROM likes WHERE post_id = p.post_id) AS like_count,
               (SELECT COUNT() FROM comments WHERE post_id = p.post_id) AS comment_count,
               (SELECT COUNT() FROM likes WHERE post_id = p.post_id AND user_id = ?) AS user_liked
