@@ -178,7 +178,7 @@ function register_user($username, $email, $password, $full_name, $security_quest
             VALUES (?, ?, ?, ?, ?, ?, ?)";
   $stmt = $conn->prepare($query);
   $stmt->bind_param("sssssss", $username, $email, $hashed_password, $full_name, $role, $security_question, $security_answer);
-  $stmt->bind_param("ssssss", $username, $email, $hashed_password, $full_name, $security_question, $security_answer);
+  $stmt->bind_param("sssssss", $username, $email, $hashed_password, $full_name, $security_question, $security_answer);
 
   if ($stmt->execute()) {
     return [
@@ -1575,35 +1575,25 @@ function include_header($page)
           </div>
 
           // Register As section
-
           echo "<div class='form-group'>
-
             <label>Register As:</label>
-
             <div class='radio-group'>
-
               <label>
+                <input type='radio' name='reg_role' value='user' checked> User
+              </label>
+              <label>
+                <input type='radio' name='reg_role' value='admin'> Admin
+              </label>
+            </div>
+          </div>";
 
-                <input type='radio' name='reg_role' value='user'" . (!isset($_POST['reg_role']) || $_POST['reg_role'] === 'user' ? " checked" : "" ) . "> User
 
-        </label>
+          // Add this button
+          echo "<div class='form-group'>
+            <button type='submit' name='register' class='btn btn-primary'>Create Account</button>
+          </div>" ;
 
-        <label>
-
-        <input type='radio' name='reg_role' value='admin'" . (isset($_POST['reg_role']) && $_POST['reg_role']==='admin' ? " checked" : "" ) . "> Admin
-
-      </label>
-
-    </div>
-
-  </div>" ;
-
-                  // Add this button
-                  echo "<div class='form-group'>
-  <button type='submit' name='register' class='btn btn-primary'>Create Account</button>
-</div>" ;
-
-                  <p class="form-toggle-link">Already have an account? <a href="#" id="show-login">Login now</a></p>
+          <p class="form-toggle-link">Already have an account? <a href="#" id="show-login">Login now</a></p>
         </form>
       </div>
     </div>
