@@ -1210,6 +1210,25 @@ function handle_ajax_request($endpoint)
         exit;
       }
 
+      // Look up user ID from username
+      $username = sanitize_input($_POST['username']);
+      $user_query = "SELECT user_id FROM users WHERE username = ?";
+      $user_stmt = $conn->prepare($user_query);
+      $user_stmt->bind_param("s", $username);
+      $user_stmt->execute();
+      $user_result = $user_stmt->get_result();
+
+      if ($user_result->num_rows === 0) {
+        echo json_encode(['status' => 'error', 'message' => 'User not found']);
+        exit;
+      }
+
+      $receiver_id = $user_result->fetch_assoc()['user_id'];
+      $content = $_POST['content'];
+      $result = send_message($user_id, $receiver_id, $content);
+      echo json_encode($result);
+      break;
+
     case 'create_post':
       // Process post creation
       if (isset($_POST['content']) && !empty($_POST['content'])) {
@@ -1242,35 +1261,38 @@ function handle_ajax_request($endpoint)
         }
 
         // Create the post
-        $result = create_post($_SESSION['user_id'], $content, $image_path, $latitude, $longitude, $location_name);
+        $result = create_post($user_id, $content, $image_path, $latitude, $longitude, $location_name);
+        echo json_encode($result);
+      } else {
+        echo json_encode([
+          'status' => 'error',
+          'message' => 'Post content is required'
+        ]);
       }
-
-      // Redirect back to home
-      header('Location: index.php?page=home');
-      exit;
       break;
 
-      // Look up user ID from username
-      $username = sanitize_input($_POST['username']);
-      $user_query = "SELECT user_id FROM users WHERE username = ?";
-      $user_stmt = $conn->prepare($user_query);
-      $user_stmt->bind_param("s", $username);
-      $user_stmt->execute();
-      $user_result = $user_stmt->get_result();
-
-      if ($user_result->num_rows === 0) {
-        echo json_encode(['status' => 'error', 'message' => 'User not found']);
-        exit;
+    case 'admin_login':
+      if (isset($_POST['username']) && isset($_POST['password'])) {
+        $result = admin_login($_POST['username'], $_POST['password']);
+        if ($result['status'] == 'success') {
+          header('Location: index.php?page=admin_dashboard');
+          exit;
+        }
+        $error = $result['message'];
       }
 
-      $receiver_id = $user_result->fetch_assoc()['user_id'];
-      $content = $_POST['content'];
-      $result = send_message($user_id, $receiver_id, $content);
-      echo json_encode($result);
+      echo "<form method='post' action='index.php?page=admin_login'>
+        <h2>Admin Login</h2>
+        " . (isset($error) ? "<div class='error-message'>$error</div>" : "") . "
+        <input type='text' name='username' placeholder='Admin Username' required>
+        <input type='password' name='password' placeholder='Password' required>
+        <button type='submit'>Login</button>
+      </form>";
       break;
 
     default:
       echo json_encode(['status' => 'error', 'message' => 'Invalid endpoint']);
+      break;
   }
 }
 
