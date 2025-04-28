@@ -1027,41 +1027,6 @@ else {
         color: #666;
         font-size: 0.9em;
       }
-
-      .btn-post,
-      .btn-photo,
-      .location-btn {
-        padding: 6px 12px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-weight: bold;
-        margin-right: 8px;
-      }
-
-      .btn-post {
-        background-color: #1877f2;
-        color: white;
-        border: none;
-      }
-
-      .btn-photo {
-        background-color: #e4e6eb;
-        color: #1877f2;
-        border: 1px solid #ccc;
-        display: inline-block;
-      }
-
-      .location-btn {
-        background-color: #e4e6eb;
-        color: #1877f2;
-        border: 1px solid #ccc;
-      }
-
-      .post-actions {
-        display: flex;
-        align-items: center;
-        margin-top: 10px;
-      }
     </style>
   </head>
 
@@ -1232,6 +1197,46 @@ function handle_ajax_request($endpoint)
         echo json_encode(['status' => 'error', 'message' => 'Recipient username and message content are required']);
         exit;
       }
+
+    case 'create_post':
+      // Process post creation
+      if (isset($_POST['content']) && !empty($_POST['content'])) {
+        $content = $_POST['content'];
+        $image_path = null;
+        $latitude = $_POST['latitude'] ?? null;
+        $longitude = $_POST['longitude'] ?? null;
+        $location_name = $_POST['location_name'] ?? null;
+
+        // Handle image upload if present
+        if (isset($_FILES['post_image']) && $_FILES['post_image']['error'] == 0) {
+          $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
+          $max_size = 5 * 1024 * 1024; // 5 MB
+
+          if (!in_array($_FILES['post_image']['type'], $allowed_types)) {
+            $error = 'Only JPG, PNG and GIF images are allowed.';
+          } elseif ($_FILES['post_image']['size'] > $max_size) {
+            $error = 'Image size should not exceed 5 MB.';
+          } else {
+            $filename = uniqid() . '_' . basename($_FILES['post_image']['name']);
+            $upload_dir = 'uploads/';
+            if (!file_exists($upload_dir)) {
+              mkdir($upload_dir, 0777, true);
+            }
+            $upload_path = $upload_dir . $filename;
+            if (move_uploaded_file($_FILES['post_image']['tmp_name'], $upload_path)) {
+              $image_path = $upload_path;
+            }
+          }
+        }
+
+        // Create the post
+        $result = create_post($_SESSION['user_id'], $content, $image_path, $latitude, $longitude, $location_name);
+      }
+
+      // Redirect back to home
+      header('Location: index.php?page=home');
+      exit;
+      break;
 
       // Look up user ID from username
       $username = sanitize_input($_POST['username']);
@@ -1654,16 +1659,14 @@ function include_header($page)
     $posts_result = $stmt->get_result();
     $stmt->close();
 
-    // Create post form with integrated location functionality
     echo "<div class='create-post'>
-  <form action='index.php?page=home' method='post' enctype='multipart/form-data'>
+  <form action='index.php?page=create_post' method='post' enctype='multipart/form-data'>
     <textarea name='content' placeholder='What&#39;s on your mind?'></textarea>
-    <label for='post_image' class='btn-photo'><i class='fas fa-image'></i> Photo</label>
     <div class='post-actions'>
       <input type='file' name='post_image' id='post_image' accept='image/*'>
       <label for='post_image'><i class='fas fa-image'></i> Photo</label>
-      <button type='button' onclick='getLocation()' class='location-btn'><i class='fas fa-map-marker-alt'></i> Add Location</button>
-      <span id='locationStatus' class='text-sm'></span>
+      <button type='button' onclick='getLocation()' class='location-btn'><i class='fas fa-map-marker-alt'></i> Location</button>
+      <span id='locationStatus'></span>
       <input type='hidden' name='latitude' id='latitude'>
       <input type='hidden' name='longitude' id='longitude'>
       <input type='hidden' name='location_name' id='location_name'>
