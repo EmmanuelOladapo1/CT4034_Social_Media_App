@@ -1677,31 +1677,35 @@ function include_header($page)
     if ($posts_result->num_rows > 0) {
       while ($post = $posts_result->fetch_assoc()) {
         echo "<div class='post'>
-                  <div class='post-header'>
-                    <img src='" . htmlspecialchars($post['profile_pic']) . "' class='post-avatar'>
-                    <h3>" . htmlspecialchars($post['username']) . "</h3>
-                  </div>
-                  <div class='post-content'>" . nl2br(htmlspecialchars($post['content'])) . "</div>";
+        <div class='post-header'>
+          <img src='" . htmlspecialchars($post['profile_pic']) . "' class='post-avatar'>
+          <h3>" . htmlspecialchars($post['username']) . "</h3>
+        </div>
+        <div class='post-content'>" . nl2br(htmlspecialchars($post['content'])) . "</div>";
+
 
         if (!empty($post['image'])) {
           echo "<img src='" . htmlspecialchars($post['image']) . "' class='post-image'>";
+        }
+
+        // Display location if available
+
+        if (!empty($post['location_name']) || (!empty($post['latitude']) && !empty($post['longitude']))) {
+
+          echo "<div class='post-location'>📍 ";
+
+          echo !empty($post['location_name'])
+            ? htmlspecialchars($post['location_name'])
+            : 'Coordinates: ' . htmlspecialchars($post['latitude']) . ', ' . htmlspecialchars($post['longitude']);
+
+          echo "</div>";
         }
 
         echo "</div>";
       }
     }
 
-    // Location information - Make sure this section is included
-    if (!empty($post['location_name'])) {
-      echo "<div class='post-location'>
-            <i class='fas fa-map-marker-alt'></i> " . htmlspecialchars($post['location_name']) . "
-          </div>";
-    } elseif (!empty($post['latitude']) && !empty($post['longitude'])) {
-      // If there's coordinates but no location name
-      echo "<div class='post-location'>
-            <i class='fas fa-map-marker-alt'></i> Location: " . round($post['latitude'], 4) . ", " . round($post['longitude'], 4) . "
-          </div>";
-    }
+
 
     // Post creation form
     echo '<form method="POST" enctype="multipart/form-data">
