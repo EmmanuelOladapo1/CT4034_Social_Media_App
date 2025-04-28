@@ -1198,7 +1198,7 @@ function handle_ajax_request($endpoint)
         exit;
       }
 
-      $receiver_id = (int)$_POST['receiver_id'];
+      $receiver_id = (int)$_POST['username'];
       $content = $_POST['content'];
       $result = send_message($user_id, $receiver_id, $content);
       echo json_encode($result);
@@ -1666,7 +1666,7 @@ function include_header($page)
 
     echo "<div class='messages-container'><h2>Your Messages</h2>" . ($messages->num_rows > 0 ? "<div class='message-list'>" . implode('', array_map(function ($msg) {
       return "<div class='message'><strong>" . $msg['username'] . ":</strong> " . $msg['content'] . "</div>";
-    }, $messages->fetch_all(MYSQLI_ASSOC))) . "</div>" : "<p>No messages yet</p>") . "<form method='post' action='index.php?page=send_message'><input type='text' name='content' placeholder='Type a message'><input type='text' name='receiver_id' placeholder='Username'><button type='submit'>Send</button></form></div>";
+    }, $messages->fetch_all(MYSQLI_ASSOC))) . "</div>" : "<p>No messages yet</p>") . "<form method='post' action='index.php?page=send_message'><input type='text' name='content' placeholder='Type a message'><input type='text' name='username' placeholder='Username'><button type='submit'>Send</button></form></div>";
   }
 
   function show_admin_dashboard()
