@@ -6,9 +6,9 @@
  */
 
 // Database credentials
-$host = "localhost";
-$username = "your_db_username"; // Change this to your actual database username
-$password = "your_db_password"; // Change this to your actual database password
+$host = "localhost:3306";
+$username = "s4413678_db"; // Change this to your actual database username
+$password = "7q0fe22B~"; // Change this to your actual database password
 $database = "social_media_db";
 
 // Create connection
