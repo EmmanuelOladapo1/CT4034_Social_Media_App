@@ -1619,26 +1619,7 @@ function include_header($page)
 
     $posts_result = $stmt->get_result();
 
-    // Add form for creating posts with location
-    echo "<div class='bg-white p-4 rounded-lg shadow mb-4'>
-    <form action='index.php?page=home' method='POST' enctype='multipart/form-data' class='space-y-4'>
-        <textarea name='content' class='w-full p-2 border rounded' placeholder='What&#39;s on your mind?' required></textarea>
-        <div class='flex flex-wrap items-center gap-4'>
-            <div>
-                <input type='file' name='post_image' id='post_image' accept='image/*' class='border p-1'>
-                <p class='text-xs text-gray-500'>Max 2MB (JPEG, PNG)</p>
-            </div>
-            <button type='button' onclick='getLocation()' class='bg-gray-500 text-white px-4 py-2 rounded'>
-                Add Location
-            </button>
-            <span id='locationStatus' class='text-sm text-gray-600'></span>
-            <input type='hidden' name='latitude' id='latitude'>
-            <input type='hidden' name='longitude' id='longitude'>
-            <input type='hidden' name='location_name' id='location_name'>
-        </div>
-        <button type='submit' name='create_post' class='bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600'>Post</button>
-    </form>
-</div>";
+
 
     // Add script for location functionality
     echo "<script>
