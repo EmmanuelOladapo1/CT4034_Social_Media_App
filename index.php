@@ -1029,16 +1029,16 @@ else {
       }
 
       .post-image {
-       margin: 10px 0;
-       text-align: center;
+        margin: 10px 0;
+        text-align: center;
       }
 
       .post-img {
-       max-width: 100%;
-       max-height: 400px;
-      border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
+        max-width: 100%;
+        max-height: 400px;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
     </style>
   </head>
 
@@ -1593,6 +1593,22 @@ function include_header($page)
     $stmt->close();
     echo "<div class='profile-info'><h2>" . $user['username'] . "</h2><p>Email: " . $user['email'] . "</p></div>
     <div class='profile-actions'><button onclick='changePassword()'>Change Password</button><a href='index.php?page=logout' class='btn-logout'>Logout</a></div>";
+    // Get posts for the news feed first
+    $query = "SELECT p.*, u.username, u.profile_pic,
+              (SELECT COUNT(*) FROM likes WHERE post_id = p.post_id) AS like_count,
+              (SELECT COUNT(*) FROM comments WHERE post_id = p.post_id) AS comment_count,
+              (SELECT COUNT(*) FROM likes WHERE post_id = p.post_id AND user_id = ?) AS user_liked
+              FROM posts p
+              JOIN users u ON p.user_id = u.user_id
+              WHERE p.user_id NOT IN (SELECT blocked_id FROM blocked_users WHERE blocker_id = ?)
+              ORDER BY p.created_at DESC
+              LIMIT 20";
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("ii", $user_id, $user_id);
+    $stmt->execute();
+    $posts_result = $stmt->get_result();
+    $stmt->close();
+
     // Handle post submission
     $post_message = '';
 
@@ -1605,12 +1621,12 @@ function include_header($page)
       // Check if content is provided
       if (empty($content)) {
         $post_message = 'Post content cannot be empty.';
-    } else {
+      } else {
         $content = sanitize_input($content);
-    }
+      }
 
-    // Post display loop (now properly separated)
-    while ($post = $posts_result->fetch_assoc()) {
+      // Post display loop (now properly separated)
+      while ($post = $posts_result->fetch_assoc()) {
         echo "<div class='post'>";
         $content = sanitize_input($content);
 
@@ -1647,18 +1663,17 @@ function include_header($page)
         }
 
         // Post content
-         echo "<p>" . htmlspecialchars($post['content']) . "</p>";
+        echo "<p>" . htmlspecialchars($post['content']) . "</p>";
 
-      // Add this section to display the post image
-    if (!empty($post['image'])) {
-      echo "<div class='post-image'>";
-      echo "<img src='" . htmlspecialchars($post['image']) . "' alt='Post image' class='post-img'>";
-      echo "</div>";
-  }
+        // Add this section to display the post image
+        if (!empty($post['image'])) {
+          echo "<div class='post-image'>";
+          echo "<img src='" . htmlspecialchars($post['image']) . "' alt='Post image' class='post-img'>";
+          echo "</div>";
+        }
 
-  // Location info, like/comment buttons, etc...
-  echo "</div>";
-}
+        // Location info, like/comment buttons, etc...
+        echo "</div>";
 
         // If no errors, create the post
         if (empty($post_message)) {
