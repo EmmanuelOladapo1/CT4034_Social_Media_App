@@ -2,9 +2,9 @@
 session_start();
 require_once 'config/database.php';
 
-// Check if admin is logged in
-if (!isset($_SESSION['admin_id']) || !isset($_SESSION['is_admin']) || $_SESSION['is_admin'] !== true) {
-  header("Location: admin_login.php");
+// Check if user is logged in and is an admin
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
+  header("Location: login.php");
   exit();
 }
 
