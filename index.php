@@ -1623,6 +1623,7 @@ function include_header($page)
     echo "<div class='create-post'>
   <form action='index.php?page=home' method='post' enctype='multipart/form-data'>
     <textarea name='content' placeholder='What&#39;s on your mind?'></textarea>
+    <label for='post_image' class='btn-photo'><i class='fas fa-image'></i> Photo</label>
     <div class='post-actions'>
       <input type='file' name='post_image' id='post_image' accept='image/*'>
       <label for='post_image'><i class='fas fa-image'></i> Photo</label>
@@ -1631,6 +1632,7 @@ function include_header($page)
       <input type='hidden' name='latitude' id='latitude'>
       <input type='hidden' name='longitude' id='longitude'>
       <input type='hidden' name='location_name' id='location_name'>
+      <button type='submit' name='create_post' class='btn-post'>Post</button>
     </div>
   </form>
 </div>";
