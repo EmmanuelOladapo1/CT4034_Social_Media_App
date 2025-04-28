@@ -1656,8 +1656,17 @@ function include_header($page)
 
   function show_messages_page()
   {
-    // Implement messages page display
-    echo "<div class='text-center p-20'><h2>Messages Page</h2><p>This page is under construction.</p></div>";
+    global $conn;
+    $user_id = $_SESSION['user_id'];
+    $query = "SELECT m.*, u.username FROM messages m JOIN users u ON m.sender_id = u.user_id WHERE m.receiver_id = ? ORDER BY m.created_at DESC";
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $messages = $stmt->get_result();
+
+    echo "<div class='messages-container'><h2>Your Messages</h2>" . ($messages->num_rows > 0 ? "<div class='message-list'>" . implode('', array_map(function ($msg) {
+      return "<div class='message'><strong>" . $msg['username'] . ":</strong> " . $msg['content'] . "</div>";
+    }, $messages->fetch_all(MYSQLI_ASSOC))) . "</div>" : "<p>No messages yet</p>") . "<form method='post' action='index.php?page=send_message'><input type='text' name='message' placeholder='Type a message'><input type='text' name='receiver' placeholder='Username'><button type='submit'>Send</button></form></div>";
   }
 
   function show_admin_dashboard()
