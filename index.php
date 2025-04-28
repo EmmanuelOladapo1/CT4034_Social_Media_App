@@ -1620,22 +1620,7 @@ function include_header($page)
     $posts_result = $stmt->get_result();
     $stmt->close();
 
-    // Create post form with integrated location functionality
-    echo "<div class='create-post'>
-  <form action='index.php?page=home' method='post' enctype='multipart/form-data'>
-    <textarea name='content' placeholder='What&#39;s on your mind?'></textarea>
-    <div class='post-actions'>
-      <input type='file' name='post_image' id='post_image' accept='image/*'>
-      <label for='post_image'><i class='fas fa-image'></i> Photo</label>
-      <button type='button' onclick='getLocation()' class='location-btn'><i class='fas fa-map-marker-alt'></i> Add Location</button>
-      <span id='locationStatus' class='text-sm'></span>
-      <input type='hidden' name='latitude' id='latitude'>
-      <input type='hidden' name='longitude' id='longitude'>
-      <input type='hidden' name='location_name' id='location_name'>
-      <button type='submit' name='create_post' class='btn-post'>Post</button>
-    </div>
-  </form>
-</div>";
+
 
     // Update the getLocation function
     echo "<script>
