@@ -1027,6 +1027,41 @@ else {
         color: #666;
         font-size: 0.9em;
       }
+
+      .btn-post,
+      .btn-photo,
+      .location-btn {
+        padding: 6px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+        margin-right: 8px;
+      }
+
+      .btn-post {
+        background-color: #1877f2;
+        color: white;
+        border: none;
+      }
+
+      .btn-photo {
+        background-color: #e4e6eb;
+        color: #1877f2;
+        border: 1px solid #ccc;
+        display: inline-block;
+      }
+
+      .location-btn {
+        background-color: #e4e6eb;
+        color: #1877f2;
+        border: 1px solid #ccc;
+      }
+
+      .post-actions {
+        display: flex;
+        align-items: center;
+        margin-top: 10px;
+      }
     </style>
   </head>
 
