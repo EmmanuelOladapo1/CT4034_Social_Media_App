@@ -1193,13 +1193,13 @@ function handle_ajax_request($endpoint)
 
     case 'send_message':
       // Send a message
-      if (!isset($_POST['receiver']) || !isset($_POST['message']) || empty($_POST['message'])) {
+      if (!isset($_POST['receiver_id']) || !isset($_POST['content']) || empty($_POST['content'])) {
         echo json_encode(['status' => 'error', 'message' => 'Receiver ID and message content are required']);
         exit;
       }
 
-      $receiver_id = (int)$_POST['receiver'];
-      $content = $_POST['message'];
+      $receiver_id = (int)$_POST['receiver_id'];
+      $content = $_POST['content'];
       $result = send_message($user_id, $receiver_id, $content);
       echo json_encode($result);
       break;
