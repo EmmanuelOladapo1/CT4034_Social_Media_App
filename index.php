@@ -124,6 +124,7 @@ function redirect($location)
  * @param string $security_answer - Answer to the security question
  * @return array - Status and message of the registration process
  */
+
 function register_user($username, $email, $password, $full_name, $security_question, $security_answer, $role = 'user')
 {
   global $conn;
@@ -135,13 +136,6 @@ function register_user($username, $email, $password, $full_name, $security_quest
   $security_question = sanitize_input($security_question);
   $security_answer = sanitize_input($security_answer);
   $role = sanitize_input($role);
-
-  // Make sure role is either 'user' or 'admin'
-  if ($role !== 'user' && $role !== 'admin') {
-    $role = 'user'; // Default to user if invalid role
-  }
-
-
 
   // Check if username already exists
   $query = "SELECT user_id FROM users WHERE username = ?";
@@ -174,11 +168,11 @@ function register_user($username, $email, $password, $full_name, $security_quest
   // Hash password for security
   $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
+  // Insert new user into the database
   $query = "INSERT INTO users (username, email, password, full_name, role, security_question, security_answer)
-            VALUES (?, ?, ?, ?, ?, ?, ?)";
+               VALUES (?, ?, ?, ?, ?, ?, ?)";
   $stmt = $conn->prepare($query);
   $stmt->bind_param("sssssss", $username, $email, $hashed_password, $full_name, $role, $security_question, $security_answer);
-  $stmt->bind_param("sssssss", $username, $email, $hashed_password, $full_name, $security_question, $security_answer);
 
   if ($stmt->execute()) {
     return [
@@ -192,6 +186,7 @@ function register_user($username, $email, $password, $full_name, $security_quest
     ];
   }
 }
+
 
 /**
  * Function to authenticate a user
@@ -1444,15 +1439,26 @@ function include_header($page)
       }
     }
 
-    // Handle registration form submission
+    // In your show_login_page() function, in the registration handling section
+
     if (isset($_POST['register'])) {
+
+      // Get form data
+
       $username = $_POST['reg_username'] ?? '';
+
       $email = $_POST['reg_email'] ?? '';
+
       $password = $_POST['reg_password'] ?? '';
+
       $confirm_password = $_POST['reg_confirm_password'] ?? '';
+
       $full_name = $_POST['reg_full_name'] ?? '';
+
       $security_question = $_POST['security_question'] ?? '';
+
       $security_answer = $_POST['security_answer'] ?? '';
+
       $role = $_POST['reg_role'] ?? 'user';
 
       // Validate inputs
@@ -1468,7 +1474,8 @@ function include_header($page)
       } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $register_error = 'Please enter a valid email address.';
       } else {
-        // Register the user
+        // Register the user with the role parameter
+
         $result = register_user($username, $email, $password, $full_name, $security_question, $security_answer, $role);
 
         if ($result['status'] == 'success') {
