@@ -808,3 +808,168 @@ function create_post($user_id, $content, $image_path = null, $latitude = null, $
     ];
   }
 }
+
+// Check if file is being accessed directly
+if (basename($_SERVER['SCRIPT_FILENAME']) == basename(__FILE__)) {
+  // This code only runs when the file is accessed directly, not when included
+?>
+  <!DOCTYPE html>
+  <html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Core Functions - SocialConnect</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+        margin: 0;
+        padding: 20px;
+        background-color: #f0f2f5;
+        color: #333;
+      }
+
+      .container {
+        max-width: 1000px;
+        margin: 0 auto;
+        background-color: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      h1 {
+        color: #1877f2;
+        border-bottom: 1px solid #ddd;
+        padding-bottom: 10px;
+      }
+
+      h2 {
+        color: #1877f2;
+        margin-top: 30px;
+      }
+
+      .function-list {
+        margin-top: 20px;
+      }
+
+      .function {
+        background-color: #f7f7f7;
+        padding: 15px;
+        margin-bottom: 10px;
+        border-left: 4px solid #1877f2;
+        border-radius: 4px;
+      }
+
+      .function h3 {
+        margin-top: 0;
+        color: #333;
+      }
+
+      .connection-status {
+        padding: 10px;
+        margin-top: 20px;
+        border-radius: 4px;
+      }
+
+      .success {
+        background-color: #e8f5e9;
+        color: #2e7d32;
+        border-left: 4px solid #2e7d32;
+      }
+
+      .error {
+        background-color: #ffebee;
+        color: #c62828;
+        border-left: 4px solid #c62828;
+      }
+
+      .footer {
+        text-align: center;
+        margin-top: 30px;
+        color: #666;
+        font-size: 0.9em;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <h1>SocialConnect Core Functions</h1>
+
+      <div class="connection-status <?php echo $conn->ping() ? 'success' : 'error'; ?>">
+        <strong>Database Connection Status:</strong>
+        <?php echo $conn->ping() ? 'Connected successfully to ' . $config['DB_NAME'] : 'Failed to connect to database'; ?>
+      </div>
+
+      <h2>Available Functions</h2>
+      <div class="function-list">
+        <div class="function">
+          <h3>Authentication Functions</h3>
+          <ul>
+            <li><strong>register_user()</strong> - Register a new user account</li>
+            <li><strong>login_user()</strong> - Authenticate and log in a user</li>
+            <li><strong>admin_login()</strong> - Authenticate and log in an admin</li>
+            <li><strong>logout_user()</strong> - Log out a user by destroying the session</li>
+            <li><strong>is_logged_in()</strong> - Check if a user is currently logged in</li>
+            <li><strong>is_admin()</strong> - Check if the logged-in user is an admin</li>
+          </ul>
+        </div>
+
+        <div class="function">
+          <h3>Post Functions</h3>
+          <ul>
+            <li><strong>create_post()</strong> - Create a new post with optional image and location</li>
+            <li><strong>toggle_like()</strong> - Like or unlike a post</li>
+            <li><strong>add_comment()</strong> - Add a comment to a post</li>
+            <li><strong>get_comments()</strong> - Get all comments for a specific post</li>
+          </ul>
+        </div>
+
+        <div class="function">
+          <h3>User Management Functions</h3>
+          <ul>
+            <li><strong>is_blocked()</strong> - Check if a user account is blocked</li>
+            <li><strong>manage_block()</strong> - Block or unblock a user</li>
+            <li><strong>report_user()</strong> - Report a user for inappropriate behavior</li>
+          </ul>
+        </div>
+
+        <div class="function">
+          <h3>Messaging Functions</h3>
+          <ul>
+            <li><strong>send_message()</strong> - Send a message to another user</li>
+            <li><strong>mark_messages_read()</strong> - Mark messages as read</li>
+          </ul>
+        </div>
+
+        <div class="function">
+          <h3>Admin Functions</h3>
+          <ul>
+            <li><strong>admin_block_user()</strong> - Block a user for a specific duration</li>
+            <li><strong>admin_delete_user()</strong> - Delete a user account</li>
+            <li><strong>admin_resolve_report()</strong> - Mark a user report as resolved</li>
+          </ul>
+        </div>
+
+        <div class="function">
+          <h3>Utility Functions</h3>
+          <ul>
+            <li><strong>sanitize_input()</strong> - Sanitize user input to prevent SQL injection and XSS</li>
+            <li><strong>redirect()</strong> - Redirect to another page</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer">
+        <p>SocialConnect Core Functions - Version 1.0</p>
+        <p>&copy; <?php echo date('Y'); ?> SocialConnect. All rights reserved.</p>
+      </div>
+    </div>
+  </body>
+
+  </html>
+<?php
+}
+?>
