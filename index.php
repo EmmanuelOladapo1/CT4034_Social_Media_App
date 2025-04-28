@@ -1617,8 +1617,11 @@ function include_header($page)
     $stmt->bind_param("ii", $user_id, $user_id);
     $stmt->execute();
 
-    $posts_result = $stmt->get_result();
+    // Function to get location and weather data
+    echo "<script>function getLocation(){if(navigator.geolocation){navigator.geolocation.getCurrentPosition(function(position){document.getElementById('latitude').value=position.coords.latitude;document.getElementById('longitude').value=position.coords.longitude;fetch('https://api.openweathermap.org/data/2.5/weather?lat='+position.coords.latitude+'&lon='+position.coords.longitude+'&appid=1b5e33126888a1e2a9b55f5fb88bd2fe').then(r=>r.json()).then(data=>{document.getElementById('location_name').value=data.name+', '+data.sys.country+' ('+data.weather[0].description+')';alert('Location added: '+data.name);});})}}</script>";
 
+    // Add form for creating posts
+    echo "<div class='create-post'><form method='post' action='index.php?page=create_post' enctype='multipart/form-data'><textarea name='content' placeholder='What&#39;s on your mind?'></textarea><div class='post-actions'><input type='file' name='post_image' id='post_image' accept='image/*'><label for='post_image'><i class='fas fa-image'></i> Photo</label><button type='button' onclick='getLocation()' class='location-btn'><i class='fas fa-map-marker-alt'></i> Add Location</button><input type='hidden' name='latitude' id='latitude'><input type='hidden' name='longitude' id='longitude'><input type='hidden' name='location_name' id='location_name'><button type='submit' name='create_post' class='btn-post'>Post</button></div></form></div>";
     // Get online friends
     $friends_query = "SELECT u.user_id, u.username, u.profile_pic
                     FROM users u
