@@ -1866,7 +1866,7 @@ function show_404_page()
     <p>The page you are looking for does not exist.</p>
     <a href="index.php" class="btn btn-primary">Go Home</a>
   </div>
-  <?php
+<?php
 }
 
 /**
@@ -1991,11 +1991,12 @@ function show_admin_users()
   echo '</table></div>';
 }
 
-
-
 function show_admin_reports()
 {
-  // Implement admin reports display
-  echo "<div class='text-center p-20'><h2>Admin Reports</h2><p>This page is under construction.</p></div>";
+  global $conn;
+  $period = isset($_GET['period']) ? sanitize_input($_GET['period']) : 'month';
+  $report = $conn->query("SELECT u.username, COUNT(p.post_id) as post_count FROM users u LEFT JOIN posts p ON u.user_id = p.user_id " . ($period == 'week' ? "AND YEARWEEK(p.created_at) = YEARWEEK(NOW())" : ($period == 'month' ? "AND MONTH(p.created_at) = MONTH(NOW()) AND YEAR(p.created_at) = YEAR(NOW())" : "AND YEAR(p.created_at) = YEAR(NOW())")) . " GROUP BY u.user_id ORDER BY post_count DESC")->fetch_all(MYSQLI_ASSOC);
+  echo "<div class='admin-container'><h2>Post Activity Report (" . ucfirst($period) . ")</h2><div class='period-selector'><a href='?page=admin_reports&period=week'>Weekly</a> | <a href='?page=admin_reports&period=month'>Monthly</a> | <a href='?page=admin_reports&period=year'>Yearly</a></div><table class='report-table'><tr><th>Username</th><th>Posts</th></tr>" . implode('', array_map(function ($row) {
+    return "<tr><td>{$row['username']}</td><td>{$row['post_count']}</td></tr>";
+  }, $report)) . "</table></div>";
 }
-  ?>'
