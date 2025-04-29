@@ -665,6 +665,19 @@ function admin_delete_user($user_id, $admin_id)
 {
   global $conn;
 
+  if (isset($_GET['delete']) && is_admin()) {
+    $target_user = (int)$_GET['delete'];
+    $admin_id = $_SESSION['user_id'];
+
+    $result = admin_delete_user($target_user, $admin_id);
+
+    if ($result['status'] === 'success') {
+      header("Location: " . $_SERVER['PHP_SELF'] . "?success=" . urlencode($result['message']));
+    } else {
+      header("Location: " . $_SERVER['PHP_SELF'] . "?error=" . urlencode($result['message']));
+    }
+    exit;
+  }
   // Prevent deleting yourself
   if ($user_id == $admin_id) {
     return [
@@ -1977,23 +1990,27 @@ LIMIT 5";
   function show_admin_users()
   {
     global $conn;
-    $users = $conn->query("SELECT user_id, username, email, role FROM users");
 
-    echo "<div class='admin-users'>";
-    echo "<h2>User Management</h2>";
-    echo "<table><tr><th>ID</th><th>Username</th><th>Email</th><th>Role</th><th>Action</th></tr>";
+    echo '<div class="admin-users">';
+    if (isset($_GET['success'])) echo '<div class="alert success">' . htmlspecialchars($_GET['success']) . '</div>';
+    if (isset($_GET['error'])) echo '<div class="alert error">' . htmlspecialchars($_GET['error']) . '</div>';
 
+    $users = $conn->query("SELECT * FROM users");
+    echo '<table>';
     while ($user = $users->fetch_assoc()) {
-      echo "<tr>
-                <td>{$user['user_id']}</td>
-                <td>{$user['username']}</td>
-                <td>{$user['email']}</td>
-                <td>{$user['role']}</td>
-                <td><a href='?delete={$user['user_id']}' onclick='return confirm(\"Delete this user?\")'>Delete</a></td>
-              </tr>";
+      echo '<tr>
+                <td>' . $user['user_id'] . '</td>
+                <td>' . $user['username'] . '</td>
+                <td>' . $user['email'] . '</td>
+                <td>' . $user['role'] . '</td>
+                <td>
+                    <a href="?delete=' . $user['user_id'] . '"
+                       onclick="return confirm(\'Delete ' . htmlspecialchars($user['username']) . '? This cannot be undone!\')"
+                       class="delete-btn">Delete</a>
+                </td>
+              </tr>';
     }
-
-    echo "</table></div>";
+    echo '</table></div>';
   }
 
   function show_admin_reports()
