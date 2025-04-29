@@ -1276,191 +1276,174 @@ function handle_ajax_request($endpoint)
 /**
  * Include the appropriate header based on the page
  */
+/**
+ * Include the appropriate header based on the page
+ */
 function include_header($page)
 {
-  // Common HTML header with appropriate title based on page
-  $title = "SocialConnect";
+  $title = "SocialConnect" . (isset($_SESSION['role']) && $_SESSION['role'] == 'admin' ? " - Admin" : "");
 
-  switch ($page) {
-    case 'login':
-      $title .= " - Login";
-      break;
-    case 'home':
-      $title .= " - Home";
-      break;
-    case 'profile':
-      $title .= " - Profile";
-      break;
-    case 'messages':
-      $title .= " - Messages";
-      break;
-    case 'admin_dashboard':
-      $title .= " - Admin Dashboard";
-      break;
-    default:
-      $title .= " - " . ucfirst($page);
+  echo '<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>' . htmlspecialchars($title) . '</title>
+        <link rel="stylesheet" href="css/style.css">
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">';
+
+  if (in_array($page, ['home'])) {
+    echo '<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+              <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>';
   }
 
+  echo '</head>
+    <body>
+        <div class="container">';
+
+  if (is_logged_in() && $page !== 'login') {
+    echo '<nav class="' . (is_admin() ? 'admin-nav' : 'navbar') . '">';
+
+    if (is_admin()) {
+      echo '<ul>
+                    <li><a href="index.php?page=admin_dashboard">Dashboard</a></li>
+                    <li><a href="index.php?page=profile">Profile</a></li>
+                    <li><a href="index.php?page=logout">Logout</a></li>
+                  </ul>';
+    } else {
+      echo '<a href="index.php?page=home" class="navbar-brand">SocialConnect</a>
+                  <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a href="index.php?page=messages">
+                            <i class="fas fa-envelope"></i>';
+
+      $unread_messages = get_unread_messages_count($_SESSION['user_id']);
+      if ($unread_messages > 0) {
+        echo '<span class="unread-badge">' . $unread_messages . '</span>';
+      }
+
+      echo '</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="index.php?page=profile">
+                            <img src="' . get_user_profile_pic($_SESSION['user_id']) . '" alt="Profile" class="profile-pic">
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="index.php?page=logout" class="btn btn-secondary">Logout</a>
+                    </li>
+                  </ul>';
+    }
+    echo '</nav>';
+  }
+  echo '<div class="content">';
+}
+
+/**
+ * Include the footer HTML
+ */
+function include_footer()
+{
 ?>
-  <!DOCTYPE html>
-  <html lang="en">
-
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $title; ?></title>
-    <link rel="stylesheet" href="css/style.css">
-    <!-- Include jQuery -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <!-- Font Awesome for icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <?php if (in_array($page, ['home'])): ?>
-      <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-      <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <?php endif; ?>
-  </head>
-
-  <body>
-    <div class="container">
-      <?php if (is_logged_in() && $page !== 'login'): ?>
-        <!-- Navigation Bar for logged-in users -->
-        <nav class="navbar">
-          <a href="index.php?page=home" class="navbar-brand">SocialConnect</a>
-          <ul class="navbar-nav">
-            <li class="nav-item">
-              <a href="index.php?page=messages">
-                <i class="fas fa-envelope"></i>
-                <?php
-                // Check for unread messages
-                $user_id = $_SESSION['user_id'];
-                $unread_messages = get_unread_messages_count($user_id);
-                if ($unread_messages > 0):
-                ?>
-                  <span class="unread-badge"><?php echo $unread_messages; ?></span>
-                <?php endif; ?>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a href="index.php?page=profile">
-                <?php
-                $profile_pic = get_user_profile_pic($_SESSION['user_id']);
-                ?>
-                <img src="<?php echo $profile_pic; ?>" alt="Profile" class="profile-pic">
-              </a>
-            </li>
-            <li class="nav-item">
-              <a href="index.php?page=logout" class="btn btn-secondary">Logout</a>
-            </li>
-          </ul>
-        </nav>
-      <?php endif; ?>
-    <?php
-  }
-
-  /**
-   * Include the footer HTML
-   */
-  function include_footer()
-  {
-    ?>
-      <footer class="main-footer">
-        <p>&copy; <?php echo date('Y'); ?> SocialConnect. All rights reserved.</p>
-      </footer>
-    </div>
+  <footer class="main-footer">
+    <p>&copy; <?php echo date('Y'); ?> SocialConnect. All rights reserved.</p>
+  </footer>
+  </div>
   </body>
 
   </html>
 <?php
+}
+
+/**
+ * Show the login/registration page
+ */
+function show_login_page()
+{
+  // Initialize variables for form data and error messages
+  $login_error = '';
+  $register_error = '';
+  $register_success = '';
+
+  // Handle login form submission
+  if (isset($_POST['login'])) {
+    $username = $_POST['username'] ?? '';
+    $password = $_POST['password'] ?? '';
+    $role = $_POST['role'] ?? 'user';
+
+    if (empty($username) || empty($password)) {
+      $login_error = 'Please enter both username and password.';
+    } else {
+      // Handle login based on role
+      if ($role == 'admin') {
+        $result = admin_login($username, $password);
+      } else {
+        $result = login_user($username, $password);
+      }
+
+      if ($result['status'] == 'success') {
+        // Redirect to appropriate dashboard
+        if ($role == 'admin') {
+          header('Location: index.php?page=admin_dashboard');
+        } else {
+          header('Location: index.php?page=home');
+        }
+        exit;
+      } else {
+        $login_error = $result['message'];
+      }
+    }
   }
 
-  /**
-   * Show the login/registration page
-   */
-  function show_login_page()
-  {
-    // Initialize variables for form data and error messages
-    $login_error = '';
-    $register_error = '';
-    $register_success = '';
+  // In your show_login_page() function, in the registration handling section
 
-    // Handle login form submission
-    if (isset($_POST['login'])) {
-      $username = $_POST['username'] ?? '';
-      $password = $_POST['password'] ?? '';
-      $role = $_POST['role'] ?? 'user';
+  if (isset($_POST['register'])) {
 
-      if (empty($username) || empty($password)) {
-        $login_error = 'Please enter both username and password.';
+    // Get form data
+
+    $username = $_POST['reg_username'] ?? '';
+
+    $email = $_POST['reg_email'] ?? '';
+
+    $password = $_POST['reg_password'] ?? '';
+
+    $confirm_password = $_POST['reg_confirm_password'] ?? '';
+
+    $full_name = $_POST['reg_full_name'] ?? '';
+
+    $security_question = $_POST['security_question'] ?? '';
+
+    $security_answer = $_POST['security_answer'] ?? '';
+
+    $role = $_POST['reg_role'] ?? 'user';
+
+    // Validate inputs
+    if (
+      empty($username) || empty($email) || empty($password) || empty($confirm_password) ||
+      empty($full_name) || empty($security_question) || empty($security_answer)
+    ) {
+      $register_error = 'Please fill all required fields.';
+    } elseif ($password != $confirm_password) {
+      $register_error = 'Passwords do not match.';
+    } elseif (strlen($password) < 8) {
+      $register_error = 'Password must be at least 8 characters long.';
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+      $register_error = 'Please enter a valid email address.';
+    } else {
+      // Register the user with the role parameter
+
+      $result = register_user($username, $email, $password, $full_name, $security_question, $security_answer, $role);
+
+      if ($result['status'] == 'success') {
+        $register_success = $result['message'];
       } else {
-        // Handle login based on role
-        if ($role == 'admin') {
-          $result = admin_login($username, $password);
-        } else {
-          $result = login_user($username, $password);
-        }
-
-        if ($result['status'] == 'success') {
-          // Redirect to appropriate dashboard
-          if ($role == 'admin') {
-            header('Location: index.php?page=admin_dashboard');
-          } else {
-            header('Location: index.php?page=home');
-          }
-          exit;
-        } else {
-          $login_error = $result['message'];
-        }
+        $register_error = $result['message'];
       }
     }
+  }
 
-    // In your show_login_page() function, in the registration handling section
-
-    if (isset($_POST['register'])) {
-
-      // Get form data
-
-      $username = $_POST['reg_username'] ?? '';
-
-      $email = $_POST['reg_email'] ?? '';
-
-      $password = $_POST['reg_password'] ?? '';
-
-      $confirm_password = $_POST['reg_confirm_password'] ?? '';
-
-      $full_name = $_POST['reg_full_name'] ?? '';
-
-      $security_question = $_POST['security_question'] ?? '';
-
-      $security_answer = $_POST['security_answer'] ?? '';
-
-      $role = $_POST['reg_role'] ?? 'user';
-
-      // Validate inputs
-      if (
-        empty($username) || empty($email) || empty($password) || empty($confirm_password) ||
-        empty($full_name) || empty($security_question) || empty($security_answer)
-      ) {
-        $register_error = 'Please fill all required fields.';
-      } elseif ($password != $confirm_password) {
-        $register_error = 'Passwords do not match.';
-      } elseif (strlen($password) < 8) {
-        $register_error = 'Password must be at least 8 characters long.';
-      } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $register_error = 'Please enter a valid email address.';
-      } else {
-        // Register the user with the role parameter
-
-        $result = register_user($username, $email, $password, $full_name, $security_question, $security_answer, $role);
-
-        if ($result['status'] == 'success') {
-          $register_success = $result['message'];
-        } else {
-          $register_error = $result['message'];
-        }
-      }
-    }
-
-    // Display the login/registration form
+  // Display the login/registration form
 ?>
   <header class="main-header">
     <h1>SocialConnect</h1>
@@ -1603,79 +1586,79 @@ function include_header($page)
     });
   </script>
 <?php
-  }
+}
 
-  /**
-   * Show the home page with news feed
-   */
-  function show_home_page()
-  {
-    global $conn;
-    $user_id = $_SESSION['user_id'];
-    $post_message = '';
+/**
+ * Show the home page with news feed
+ */
+function show_home_page()
+{
+  global $conn;
+  $user_id = $_SESSION['user_id'];
+  $post_message = '';
 
-    // Handle post submission first
-    if (isset($_POST['create_post'])) {
-      $content = $_POST['content'] ?? '';
-      $latitude = $_POST['latitude'] ?? null;
-      $longitude = $_POST['longitude'] ?? null;
-      $location_name = $_POST['location_name'] ?? null;
-      $image_path = null;
+  // Handle post submission first
+  if (isset($_POST['create_post'])) {
+    $content = $_POST['content'] ?? '';
+    $latitude = $_POST['latitude'] ?? null;
+    $longitude = $_POST['longitude'] ?? null;
+    $location_name = $_POST['location_name'] ?? null;
+    $image_path = null;
 
-      // Validate content
-      if (empty($content)) {
-        $post_message = 'Post content cannot be empty.';
-      } else {
-        $content = sanitize_input($content);
+    // Validate content
+    if (empty($content)) {
+      $post_message = 'Post content cannot be empty.';
+    } else {
+      $content = sanitize_input($content);
 
-        // Handle image upload
-        if (isset($_FILES['post_image']) && $_FILES['post_image']['error'] == 0) {
-          $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
-          $max_size = 5 * 1024 * 1024;
+      // Handle image upload
+      if (isset($_FILES['post_image']) && $_FILES['post_image']['error'] == 0) {
+        $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
+        $max_size = 5 * 1024 * 1024;
 
-          if (!in_array($_FILES['post_image']['type'], $allowed_types)) {
-            $post_message = 'Only JPG, PNG and GIF images are allowed.';
-          } elseif ($_FILES['post_image']['size'] > $max_size) {
-            $post_message = 'Image size should not exceed 5 MB.';
-          } else {
-            $filename = uniqid() . '_' . basename($_FILES['post_image']['name']);
-            $upload_dir = 'uploads/';
+        if (!in_array($_FILES['post_image']['type'], $allowed_types)) {
+          $post_message = 'Only JPG, PNG and GIF images are allowed.';
+        } elseif ($_FILES['post_image']['size'] > $max_size) {
+          $post_message = 'Image size should not exceed 5 MB.';
+        } else {
+          $filename = uniqid() . '_' . basename($_FILES['post_image']['name']);
+          $upload_dir = 'uploads/';
 
-            if (!file_exists($upload_dir)) {
-              mkdir($upload_dir, 0777, true);
-            }
-
-            $upload_path = $upload_dir . $filename;
-            if (move_uploaded_file($_FILES['post_image']['tmp_name'], $upload_path)) {
-              $image_path = $upload_path;
-            }
+          if (!file_exists($upload_dir)) {
+            mkdir($upload_dir, 0777, true);
           }
-        }
 
-        // Create post if no errors
-        if (empty($post_message)) {
-          $result = create_post($user_id, $content, $image_path, $latitude, $longitude, $location_name);
-          if ($result['status'] == 'success') {
-            header('Location: index.php?page=home&posted=1');
-            exit;
+          $upload_path = $upload_dir . $filename;
+          if (move_uploaded_file($_FILES['post_image']['tmp_name'], $upload_path)) {
+            $image_path = $upload_path;
           }
         }
       }
+
+      // Create post if no errors
+      if (empty($post_message)) {
+        $result = create_post($user_id, $content, $image_path, $latitude, $longitude, $location_name);
+        if ($result['status'] == 'success') {
+          header('Location: index.php?page=home&posted=1');
+          exit;
+        }
+      }
     }
+  }
 
-    // Display success message
-    if (isset($_GET['posted']) && $_GET['posted'] == '1') {
-      echo "<div class='success-message'>✅ Post submitted successfully!</div>";
-    }
+  // Display success message
+  if (isset($_GET['posted']) && $_GET['posted'] == '1') {
+    echo "<div class='success-message'>✅ Post submitted successfully!</div>";
+  }
 
-    // Get user info
-    $stmt = $conn->prepare("SELECT * FROM users WHERE user_id = ?");
-    $stmt->bind_param("i", $user_id);
-    $stmt->execute();
-    $user = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
+  // Get user info
+  $stmt = $conn->prepare("SELECT * FROM users WHERE user_id = ?");
+  $stmt->bind_param("i", $user_id);
+  $stmt->execute();
+  $user = $stmt->get_result()->fetch_assoc();
+  $stmt->close();
 
-    echo "<div class='profile-info'>
+  echo "<div class='profile-info'>
           <h2>{$user['username']}</h2>
           <p>Email: {$user['email']}</p>
         </div>
@@ -1684,8 +1667,8 @@ function include_header($page)
           <a href='index.php?page=logout' class='btn-logout'>Logout</a>
         </div>";
 
-    // Get posts
-    $stmt = $conn->prepare("SELECT p.*, u.username, u.profile_pic,
+  // Get posts
+  $stmt = $conn->prepare("SELECT p.*, u.username, u.profile_pic,
                         (SELECT COUNT(*) FROM likes WHERE post_id = p.post_id) AS like_count,
                         (SELECT COUNT(*) FROM comments WHERE post_id = p.post_id) AS comment_count,
                         (SELECT COUNT(*) FROM likes WHERE post_id = p.post_id AND user_id = ?) AS user_liked
@@ -1694,16 +1677,16 @@ function include_header($page)
                         WHERE p.user_id NOT IN (SELECT blocked_id FROM blocked_users WHERE blocker_id = ?)
                         ORDER BY p.created_at DESC
                         LIMIT 20");
-    $stmt->bind_param("ii", $user_id, $user_id);
-    $stmt->execute();
-    $posts_result = $stmt->get_result();
+  $stmt->bind_param("ii", $user_id, $user_id);
+  $stmt->execute();
+  $posts_result = $stmt->get_result();
 
-    // Display posts
-    echo "<div class='debug-info'>📄 Found {$posts_result->num_rows} posts in database</div>";
+  // Display posts
+  echo "<div class='debug-info'>📄 Found {$posts_result->num_rows} posts in database</div>";
 
-    if ($posts_result->num_rows > 0) {
-      while ($post = $posts_result->fetch_assoc()) {
-        echo "<div class='post'>
+  if ($posts_result->num_rows > 0) {
+    while ($post = $posts_result->fetch_assoc()) {
+      echo "<div class='post'>
         <div class='post-header'>
           <img src='" . htmlspecialchars($post['profile_pic']) . "' class='post-avatar'>
           <h3>" . htmlspecialchars($post['username']) . "</h3>
@@ -1711,41 +1694,41 @@ function include_header($page)
         <div class='post-content'>" . nl2br(htmlspecialchars($post['content'])) . "</div>";
 
 
-        if (!empty($post['image'])) {
-          echo "<img src='" . htmlspecialchars($post['image']) . "' class='post-image'>";
-        }
+      if (!empty($post['image'])) {
+        echo "<img src='" . htmlspecialchars($post['image']) . "' class='post-image'>";
+      }
 
-        // Display location if available
+      // Display location if available
 
-        if (!empty($post['location_name']) || (!empty($post['latitude']) && !empty($post['longitude']))) {
+      if (!empty($post['location_name']) || (!empty($post['latitude']) && !empty($post['longitude']))) {
 
-          echo "<div class='post-location'>📍 ";
-          echo "<div class='post-actions'><form method='post' action='index.php?page=like_post' style='display:inline'><input type='hidden' name='post_id' value='{$post['post_id']}'><button type='submit' class='like-btn'>Like ({$post['like_count']})</button></form> <form style='display:inline' action='index.php?page=add_comment' method='post'><input type='hidden' name='post_id' value='{$post['post_id']}'><input type='text' name='content' placeholder='Comment...' required><button type='submit'>Comment</button></form></div>";
-          echo !empty($post['location_name'])
-            ? htmlspecialchars($post['location_name'])
-            : 'Coordinates: ' . htmlspecialchars($post['latitude']) . ', ' . htmlspecialchars($post['longitude']);
-
-          echo "</div>";
-        }
+        echo "<div class='post-location'>📍 ";
+        echo "<div class='post-actions'><form method='post' action='index.php?page=like_post' style='display:inline'><input type='hidden' name='post_id' value='{$post['post_id']}'><button type='submit' class='like-btn'>Like ({$post['like_count']})</button></form> <form style='display:inline' action='index.php?page=add_comment' method='post'><input type='hidden' name='post_id' value='{$post['post_id']}'><input type='text' name='content' placeholder='Comment...' required><button type='submit'>Comment</button></form></div>";
+        echo !empty($post['location_name'])
+          ? htmlspecialchars($post['location_name'])
+          : 'Coordinates: ' . htmlspecialchars($post['latitude']) . ', ' . htmlspecialchars($post['longitude']);
 
         echo "</div>";
       }
+
+      echo "</div>";
     }
+  }
 
 
 
-    // Post creation form
-    echo '<form method="POST" enctype="multipart/form-data">
+  // Post creation form
+  echo '<form method="POST" enctype="multipart/form-data">
           <textarea name="content" placeholder="What\'s on your mind?"></textarea>
           <input type="file" name="post_image">
           <button type="submit" name="create_post">Post</button>
         </form>';
 
-    $stmt->close();
-  }
+  $stmt->close();
+}
 
-  // Get posts for the news feed
-  $query = "SELECT p.*, u.username, u.profile_pic,
+// Get posts for the news feed
+$query = "SELECT p.*, u.username, u.profile_pic,
               (SELECT COUNT(*) FROM likes WHERE post_id = p.post_id) AS like_count,
               (SELECT COUNT(*) FROM comments WHERE post_id = p.post_id) AS comment_count,
               (SELECT COUNT(*) FROM likes WHERE post_id = p.post_id AND user_id = ?) AS user_liked
@@ -1754,13 +1737,13 @@ function include_header($page)
               WHERE p.user_id NOT IN (SELECT blocked_id FROM blocked_users WHERE blocker_id = ?)
               ORDER BY p.created_at DESC
               LIMIT 20";
-  $stmt = $conn->prepare($query);
-  $stmt->bind_param("ii", $user_id, $user_id);
-  $stmt->execute();
-  $posts_result = $stmt->get_result();
-  $stmt->close();
+$stmt = $conn->prepare($query);
+$stmt->bind_param("ii", $user_id, $user_id);
+$stmt->execute();
+$posts_result = $stmt->get_result();
+$stmt->close();
 
-  echo "<div class='create-post'>
+echo "<div class='create-post'>
   <form action='index.php?page=home' method='post' enctype='multipart/form-data'>
     <textarea name='content' placeholder='What&#39;s on your mind?'></textarea>
     <div class='post-actions'>
@@ -1776,8 +1759,8 @@ function include_header($page)
   </form>
 </div>";
 
-  // Update the getLocation function
-  echo "<script>
+// Update the getLocation function
+echo "<script>
 function getLocation() {
     const status = document.getElementById('locationStatus');
     status.textContent = 'Getting location...';
@@ -1841,8 +1824,8 @@ function getLocation() {
 }
 </script>";
 
-  // Get online friends
-  $friends_query = "SELECT u.user_id, u.username, u.profile_pic
+// Get online friends
+$friends_query = "SELECT u.user_id, u.username, u.profile_pic
 FROM users u
 WHERE u.user_id != ?
 AND u.user_id NOT IN (
@@ -1851,31 +1834,31 @@ AND u.user_id NOT IN (
 ORDER BY u.last_activity DESC
 LIMIT 5";
 
-  $friends_stmt = $conn->prepare($friends_query);
-  $friends_stmt->bind_param("ii", $user_id, $user_id);
-  $friends_stmt->execute();
-  $friends_result = $friends_stmt->get_result();
-  $online_friends = $friends_result->fetch_all(MYSQLI_ASSOC);
-  $friends_stmt->close();
+$friends_stmt = $conn->prepare($friends_query);
+$friends_stmt->bind_param("ii", $user_id, $user_id);
+$friends_stmt->execute();
+$friends_result = $friends_stmt->get_result();
+$online_friends = $friends_result->fetch_all(MYSQLI_ASSOC);
+$friends_stmt->close();
 
-  // Display friends section
-  if (!empty($online_friends)) {
-    echo '<div class="online-friends">';
-    echo '<h4>Online Friends</h4>';
-    foreach ($online_friends as $friend) {
-      echo '<div class="friend">';
-      echo '<img src="' . htmlspecialchars($friend['profile_pic']) . '" alt="' . htmlspecialchars($friend['username']) . '">';
-      echo '<span>' . htmlspecialchars($friend['username']) . '</span>';
-      echo '</div>';
-    }
+// Display friends section
+if (!empty($online_friends)) {
+  echo '<div class="online-friends">';
+  echo '<h4>Online Friends</h4>';
+  foreach ($online_friends as $friend) {
+    echo '<div class="friend">';
+    echo '<img src="' . htmlspecialchars($friend['profile_pic']) . '" alt="' . htmlspecialchars($friend['username']) . '">';
+    echo '<span>' . htmlspecialchars($friend['username']) . '</span>';
     echo '</div>';
   }
+  echo '</div>';
+}
 
-  /**
-   * Show 404 page not found
-   */
-  function show_404_page()
-  {
+/**
+ * Show 404 page not found
+ */
+function show_404_page()
+{
 ?>
   <div class="error-container text-center">
     <h1>404</h1>
@@ -1884,106 +1867,106 @@ LIMIT 5";
     <a href="index.php" class="btn btn-primary">Go Home</a>
   </div>
   <?php
-  }
+}
 
-  /**
-   * Placeholder functions for other pages - implement these as needed
-   */
-  function show_profile_page()
-  {
-    global $conn;
-    $user_id = $_SESSION['user_id'];
-    $profile_id = isset($_GET['id']) ? (int)$_GET['id'] : $user_id;
-    $query = "SELECT * FROM users WHERE user_id = ?";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("i", $profile_id); // Changed to use profile_id instead of user_id
-    $stmt->execute();
-    $user = $stmt->get_result()->fetch_assoc();
+/**
+ * Placeholder functions for other pages - implement these as needed
+ */
+function show_profile_page()
+{
+  global $conn;
+  $user_id = $_SESSION['user_id'];
+  $profile_id = isset($_GET['id']) ? (int)$_GET['id'] : $user_id;
+  $query = "SELECT * FROM users WHERE user_id = ?";
+  $stmt = $conn->prepare($query);
+  $stmt->bind_param("i", $profile_id); // Changed to use profile_id instead of user_id
+  $stmt->execute();
+  $user = $stmt->get_result()->fetch_assoc();
 
-    echo "<div class='profile-card'><img src='" . ($user['profile_pic'] ?: 'uploads/default.jpg') . "' alt='Profile' class='profile-icon'></div>
+  echo "<div class='profile-card'><img src='" . ($user['profile_pic'] ?: 'uploads/default.jpg') . "' alt='Profile' class='profile-icon'></div>
     <div class='profile-info'><h2>" . $user['username'] . "</h2><p>Email: " . $user['email'] . "</p></div>
     <div class='profile-actions'>" . ($user_id == $profile_id ? "<button onclick='changePassword()'>Change Password</button><a href='index.php?page=logout' class='btn-logout'>Logout</a>" : "<a href='index.php?page=block_user&id={$profile_id}' class='btn-action'>Block User</a> <a href='#' onclick='showReportForm()' class='btn-action'>Report User</a>") . "</div>" . ($user_id != $profile_id ? "<form id='report-form' style='display:none' method='post' action='index.php?page=report_user'><input type='hidden' name='reported_id' value='{$profile_id}'><textarea name='reason' placeholder='Why are you reporting this user?'></textarea><button type='submit'>Submit</button></form>" : "");
+}
+
+function show_messages_page()
+{
+  global $conn;
+  $user_id = $_SESSION['user_id'];
+  $query = "SELECT m.*, u.username FROM messages m JOIN users u ON m.sender_id = u.user_id WHERE m.receiver_id = ? ORDER BY m.created_at DESC";
+  $stmt = $conn->prepare($query);
+  $stmt->bind_param("i", $user_id);
+  $stmt->execute();
+  $messages = $stmt->get_result();
+
+  echo "<div class='messages-container'><h2>Your Messages</h2>" . ($messages->num_rows > 0 ? "<div class='message-list'>" . implode('', array_map(function ($msg) {
+    return "<div class='message'><strong>" . $msg['username'] . ":</strong> " . $msg['content'] . "</div>";
+  }, $messages->fetch_all(MYSQLI_ASSOC))) . "</div>" : "<p>No messages yet</p>") . "<form method='post' action='index.php?page=send_message'><input type='text' name='content' placeholder='Type a message'><input type='text' name='username' placeholder='Username'><button type='submit'>Send</button></form></div>";
+}
+
+// Modified admin dashboard function
+
+function show_admin_dashboard()
+
+{
+  global $conn;
+  echo '<div class="admin-dashboard">';
+  echo '<h2>Admin Dashboard</h2>';
+  echo '<p>Welcome, ' . htmlspecialchars($_SESSION['username']) . '!</p>'; // Fixed welcome message
+  show_admin_users();
+  show_admin_reports();
+  echo '</div>';
+}
+
+/**
+ * Function for admin to delete a user
+ *
+ * @param int $user_id - ID of the user to delete
+ * @param int $admin_id - ID of the admin performing the action
+ * @return array - Status and message
+ */
+
+if (isset($_GET['delete']) && is_admin()) {
+  $target_user = (int)$_GET['delete'];
+  $admin_id = $_SESSION['user_id'];
+
+  $result = admin_delete_user($target_user, $admin_id);
+
+  $redirect_url = "index.php?page=admin_dashboard" .
+    ($result['status'] === 'success' ? "&success=" : "&error=") .
+    urlencode($result['message']);
+
+  header("Location: $redirect_url");
+  exit;
+}
+
+// Keep original admin_delete_user function
+function admin_delete_user($user_id, $admin_id)
+{
+  global $conn;
+
+  if ($user_id == $admin_id) {
+    return ['status' => 'error', 'message' => 'Cannot delete your own account'];
   }
 
-  function show_messages_page()
-  {
-    global $conn;
-    $user_id = $_SESSION['user_id'];
-    $query = "SELECT m.*, u.username FROM messages m JOIN users u ON m.sender_id = u.user_id WHERE m.receiver_id = ? ORDER BY m.created_at DESC";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("i", $user_id);
-    $stmt->execute();
-    $messages = $stmt->get_result();
+  $stmt = $conn->prepare("DELETE FROM users WHERE user_id = ?");
+  $stmt->bind_param("i", $user_id);
 
-    echo "<div class='messages-container'><h2>Your Messages</h2>" . ($messages->num_rows > 0 ? "<div class='message-list'>" . implode('', array_map(function ($msg) {
-      return "<div class='message'><strong>" . $msg['username'] . ":</strong> " . $msg['content'] . "</div>";
-    }, $messages->fetch_all(MYSQLI_ASSOC))) . "</div>" : "<p>No messages yet</p>") . "<form method='post' action='index.php?page=send_message'><input type='text' name='content' placeholder='Type a message'><input type='text' name='username' placeholder='Username'><button type='submit'>Send</button></form></div>";
-  }
+  return $stmt->execute() ?
+    ['status' => 'success', 'message' => 'User deleted'] :
+    ['status' => 'error', 'message' => 'Deletion failed: ' . $conn->error];
+}
 
-  // Modified admin dashboard function
+// Modified show_admin_users function
+function show_admin_users()
+{
+  global $conn;
 
-  function show_admin_dashboard()
+  echo '<div class="admin-users">';
+  if (isset($_GET['success'])) echo '<div class="success">' . htmlspecialchars($_GET['success']) . '</div>';
+  if (isset($_GET['error'])) echo '<div class="error">' . htmlspecialchars($_GET['error']) . '</div>';
 
-  {
-    global $conn;
-    echo '<div class="admin-dashboard">';
-    echo '<h2>Admin Dashboard</h2>';
-    echo '<p>Welcome, ' . htmlspecialchars($_SESSION['username']) . '!</p>'; // Fixed welcome message
-    show_admin_users();
-    show_admin_reports();
-    echo '</div>';
-  }
-
-  /**
-   * Function for admin to delete a user
-   *
-   * @param int $user_id - ID of the user to delete
-   * @param int $admin_id - ID of the admin performing the action
-   * @return array - Status and message
-   */
-
-  if (isset($_GET['delete']) && is_admin()) {
-    $target_user = (int)$_GET['delete'];
-    $admin_id = $_SESSION['user_id'];
-
-    $result = admin_delete_user($target_user, $admin_id);
-
-    $redirect_url = "index.php?page=admin_dashboard" .
-      ($result['status'] === 'success' ? "&success=" : "&error=") .
-      urlencode($result['message']);
-
-    header("Location: $redirect_url");
-    exit;
-  }
-
-  // Keep original admin_delete_user function
-  function admin_delete_user($user_id, $admin_id)
-  {
-    global $conn;
-
-    if ($user_id == $admin_id) {
-      return ['status' => 'error', 'message' => 'Cannot delete your own account'];
-    }
-
-    $stmt = $conn->prepare("DELETE FROM users WHERE user_id = ?");
-    $stmt->bind_param("i", $user_id);
-
-    return $stmt->execute() ?
-      ['status' => 'success', 'message' => 'User deleted'] :
-      ['status' => 'error', 'message' => 'Deletion failed: ' . $conn->error];
-  }
-
-  // Modified show_admin_users function
-  function show_admin_users()
-  {
-    global $conn;
-
-    echo '<div class="admin-users">';
-    if (isset($_GET['success'])) echo '<div class="success">' . htmlspecialchars($_GET['success']) . '</div>';
-    if (isset($_GET['error'])) echo '<div class="error">' . htmlspecialchars($_GET['error']) . '</div>';
-
-    $users = $conn->query("SELECT * FROM users ORDER BY user_id DESC");
-    echo '<table>
+  $users = $conn->query("SELECT * FROM users ORDER BY user_id DESC");
+  echo '<table>
             <tr>
                 <th>ID</th>
                 <th>Username</th>
@@ -1992,8 +1975,8 @@ LIMIT 5";
                 <th>Actions</th>
             </tr>';
 
-    while ($user = $users->fetch_assoc()) {
-      echo '<tr>
+  while ($user = $users->fetch_assoc()) {
+    echo '<tr>
                 <td>' . $user['user_id'] . '</td>
                 <td>' . htmlspecialchars($user['username']) . '</td>
                 <td>' . htmlspecialchars($user['email']) . '</td>
@@ -2004,15 +1987,15 @@ LIMIT 5";
                        class="delete-btn">Delete</a>
                 </td>
               </tr>';
-    }
-    echo '</table></div>';
   }
+  echo '</table></div>';
+}
 
 
 
-  function show_admin_reports()
-  {
-    // Implement admin reports display
-    echo "<div class='text-center p-20'><h2>Admin Reports</h2><p>This page is under construction.</p></div>";
-  }
+function show_admin_reports()
+{
+  // Implement admin reports display
+  echo "<div class='text-center p-20'><h2>Admin Reports</h2><p>This page is under construction.</p></div>";
+}
   ?>'
