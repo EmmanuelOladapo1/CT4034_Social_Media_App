@@ -1956,8 +1956,22 @@ LIMIT 5";
 
   function show_admin_dashboard()
   {
-    // Implement admin dashboard display
-    echo "<div class='text-center p-20'><h2>Admin Dashboard</h2><p>This page is under construction.</p></div>";
+    global $conn;
+    $user_id = $_SESSION['user_id'];
+    $query = "SELECT * FROM users WHERE user_id = ? AND role = 'admin'";
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $admin = $stmt->get_result()->fetch_assoc();
+
+    if ($admin) {
+      echo "<div class='admin-dashboard'><h2>Admin Dashboard</h2><p>Welcome, Admin {$admin['username']}!</p>";
+      show_admin_users();
+      show_admin_reports();
+      echo "</div>";
+    } else {
+      echo "<div class='error-message'>You do not have permission to access this page.</div>";
+    }
   }
 
   function show_admin_users()
