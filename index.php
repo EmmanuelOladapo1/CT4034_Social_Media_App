@@ -312,6 +312,8 @@ function admin_login($username, $password)
     ];
   }
 }
+
+$result = $stmt->get_result();
 if ($result->num_rows == 0) {
   return [
     'status' => 'error',
