@@ -2,6 +2,8 @@
 // Start session only once at the beginning
 session_start();
 
+
+
 /**
  * Combined core_functions.php and index.php
  * Contains all database functions and routing logic
@@ -22,6 +24,7 @@ $conn = new mysqli($config['DB_HOST'], $config['DB_USER'], $config['DB_PASS'], $
 if ($conn->connect_error) {
   die("Connection failed: " . $conn->connect_error);
 }
+
 
 /*
  * CORE FUNCTIONS SECTION
@@ -322,6 +325,8 @@ function admin_login($username, $password, $role = 'admin')
     'message' => 'Invalid admin credentials.'
   ];
 }
+
+
 
 /**
  * Function to handle liking/unliking posts
@@ -1957,8 +1962,24 @@ LIMIT 5";
 
   function show_admin_users()
   {
-    // Implement admin users management display
-    echo "<div class='text-center p-20'><h2>Admin Users Management</h2><p>This page is under construction.</p></div>";
+    global $conn;
+    $users = $conn->query("SELECT user_id, username, email, role FROM users");
+
+    echo "<div class='admin-users'>";
+    echo "<h2>User Management</h2>";
+    echo "<table><tr><th>ID</th><th>Username</th><th>Email</th><th>Role</th><th>Action</th></tr>";
+
+    while ($user = $users->fetch_assoc()) {
+      echo "<tr>
+                <td>{$user['user_id']}</td>
+                <td>{$user['username']}</td>
+                <td>{$user['email']}</td>
+                <td>{$user['role']}</td>
+                <td><a href='?delete={$user['user_id']}' onclick='return confirm(\"Delete this user?\")'>Delete</a></td>
+              </tr>";
+    }
+
+    echo "</table></div>";
   }
 
   function show_admin_reports()
