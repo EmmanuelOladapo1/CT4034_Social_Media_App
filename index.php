@@ -287,7 +287,7 @@ function admin_login($username, $password, $role = 'admin')
   $username = sanitize_input($username);
 
   // Get admin from database
-  $query = "SELECT user_id, username, password, role, FROM users WHERE username = ? AND role = ?";
+  $query = "SELECT user_id, username, password, role FROM users WHERE username = ? AND role = ?";
   $stmt = $conn->prepare($query);
   $stmt->bind_param("ss", $username, $role);
   $stmt->execute();
