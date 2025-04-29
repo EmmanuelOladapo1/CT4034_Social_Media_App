@@ -1994,9 +1994,18 @@ function show_admin_users()
 function show_admin_reports()
 {
   global $conn;
+  $action = isset($_POST['action']) ? sanitize_input($_POST['action']) : '';
+  $user_id = isset($_POST['user_id']) ? (int)$_POST['user_id'] : 0;
+  $report_id = isset($_POST['report_id']) ? (int)$_POST['report_id'] : 0;
   $period = isset($_GET['period']) ? sanitize_input($_GET['period']) : 'month';
-  $report = $conn->query("SELECT u.username, COUNT(p.post_id) as post_count FROM users u LEFT JOIN posts p ON u.user_id = p.user_id " . ($period == 'week' ? "AND YEARWEEK(p.created_at) = YEARWEEK(NOW())" : ($period == 'month' ? "AND MONTH(p.created_at) = MONTH(NOW()) AND YEAR(p.created_at) = YEAR(NOW())" : "AND YEAR(p.created_at) = YEAR(NOW())")) . " GROUP BY u.user_id ORDER BY post_count DESC")->fetch_all(MYSQLI_ASSOC);
+  if ($action == 'block' && $user_id) admin_block_user($user_id, 30);
+  elseif ($action == 'verify' && $user_id) $conn->query("UPDATE users SET id_verification_required = 1 WHERE user_id = $user_id");
+  elseif ($action == 'resolve' && $report_id) $conn->query("UPDATE reports SET status = 'resolved' WHERE report_id = $report_id");
+  $posts_report = $conn->query("SELECT u.username, COUNT(p.post_id) as post_count FROM users u LEFT JOIN posts p ON u.user_id = p.user_id " . ($period == 'week' ? "AND YEARWEEK(p.created_at) = YEARWEEK(NOW())" : ($period == 'month' ? "AND MONTH(p.created_at) = MONTH(NOW()) AND YEAR(p.created_at) = YEAR(NOW())" : "AND YEAR(p.created_at) = YEAR(NOW())")) . " GROUP BY u.user_id ORDER BY post_count DESC")->fetch_all(MYSQLI_ASSOC);
+  $user_reports = $conn->query("SELECT r.*, reporter.username as reporter_name, reported.username as reported_name FROM reports r JOIN users reporter ON r.reporter_id = reporter.user_id JOIN users reported ON r.reported_id = reported.user_id WHERE r.status = 'pending' ORDER BY r.created_at DESC")->fetch_all(MYSQLI_ASSOC);
   echo "<div class='admin-container'><h2>Post Activity Report (" . ucfirst($period) . ")</h2><div class='period-selector'><a href='?page=admin_reports&period=week'>Weekly</a> | <a href='?page=admin_reports&period=month'>Monthly</a> | <a href='?page=admin_reports&period=year'>Yearly</a></div><table class='report-table'><tr><th>Username</th><th>Posts</th></tr>" . implode('', array_map(function ($row) {
     return "<tr><td>{$row['username']}</td><td>{$row['post_count']}</td></tr>";
-  }, $report)) . "</table></div>";
+  }, $posts_report)) . "</table><h2 class='mt-4'>User Reports</h2><table class='report-table mt-2'><tr><th>Reporter</th><th>Reported User</th><th>Reason</th><th>Date</th><th>Actions</th></tr>" . implode('', array_map(function ($r) {
+    return "<tr><td>{$r['reporter_name']}</td><td>{$r['reported_name']}</td><td>{$r['reason']}</td><td>{$r['created_at']}</td><td><form method='post'><input type='hidden' name='user_id' value='{$r['reported_id']}'><input type='hidden' name='report_id' value='{$r['report_id']}'><button name='action' value='block'>Block 30d</button> <button name='action' value='verify'>Request ID</button> <button name='action' value='resolve'>Resolve</button></form></td></tr>";
+  }, $user_reports)) . "</table></div>";
 }
