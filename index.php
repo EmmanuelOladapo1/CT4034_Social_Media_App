@@ -23,15 +23,7 @@ if ($conn->connect_error) {
   die("Connection failed: " . $conn->connect_error);
 }
 
-// Use prepared statements to avoid all quoting issues
-$stmt = $conn->prepare("UPDATE users SET password = ?, security_answer = ? WHERE username = ?");
-$stmt->bind_param(
-  "sss",
-  '$2y$10$HVj6Ap9umDmZUKw3fOsJw.LbwoOSR1cMsLiPXN6Ljmxj88kbzCKNe',
-  'tadese',
-  'admin'
-);
-$stmt->execute();
+
 
 /*
  * CORE FUNCTIONS SECTION
