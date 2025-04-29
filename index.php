@@ -1920,26 +1920,19 @@ LIMIT 5";
     }, $messages->fetch_all(MYSQLI_ASSOC))) . "</div>" : "<p>No messages yet</p>") . "<form method='post' action='index.php?page=send_message'><input type='text' name='content' placeholder='Type a message'><input type='text' name='username' placeholder='Username'><button type='submit'>Send</button></form></div>";
   }
 
+  // Modified admin dashboard function
+
   function show_admin_dashboard()
+
   {
     global $conn;
-    $user_id = $_SESSION['user_id'];
-    $query = "SELECT * FROM users WHERE user_id = ? AND role = 'admin'";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("i", $user_id);
-    $stmt->execute();
-    $admin = $stmt->get_result()->fetch_assoc();
-
-    if ($admin) {
-      echo "<div class='admin-dashboard'><h2>Admin Dashboard</h2><p>Welcome, Admin {$admin['username']}!</p>";
-      show_admin_users();
-      show_admin_reports();
-      echo "</div>";
-    } else {
-      echo "<div class='error-message'>You do not have permission to access this page.</div>";
-    }
+    echo '<div class="admin-dashboard">';
+    echo '<h2>Admin Dashboard</h2>';
+    echo '<p>Welcome, ' . htmlspecialchars($_SESSION['username']) . '!</p>'; // Fixed welcome message
+    show_admin_users();
+    show_admin_reports();
+    echo '</div>';
   }
-
 
   /**
    * Function for admin to delete a user
@@ -1949,105 +1942,73 @@ LIMIT 5";
    * @return array - Status and message
    */
 
-  // Handle deletion before any output
   if (isset($_GET['delete']) && is_admin()) {
-    echo "<!-- DEBUG: Delete handler triggered -->";
     $target_user = (int)$_GET['delete'];
     $admin_id = $_SESSION['user_id'];
 
-    echo "<!-- DEBUG: Attempting to delete user $target_user as admin $admin_id -->";
-
     $result = admin_delete_user($target_user, $admin_id);
 
-    echo "<!-- DEBUG: Deletion result: " . print_r($result, true) . " -->";
+    $redirect_url = "index.php?page=admin_dashboard" .
+      ($result['status'] === 'success' ? "&success=" : "&error=") .
+      urlencode($result['message']);
 
-    if ($result['status'] === 'success') {
-      header("Location: " . $_SERVER['PHP_SELF'] . "?success=" . urlencode($result['message']));
-      exit;
-    } else {
-      header("Location: " . $_SERVER['PHP_SELF'] . "?error=" . urlencode($result['message']));
-      exit;
-    }
+    header("Location: $redirect_url");
+    exit;
   }
 
+  // Keep original admin_delete_user function
   function admin_delete_user($user_id, $admin_id)
   {
     global $conn;
-    error_log("Attempting to delete user $user_id by admin $admin_id");
 
-    // Prevent deleting yourself
     if ($user_id == $admin_id) {
-      error_log("Deletion failed: Admin tried to delete themselves");
-      return [
-        'status' => 'error',
-        'message' => 'You cannot delete your own admin account.'
-      ];
+      return ['status' => 'error', 'message' => 'Cannot delete your own account'];
     }
 
-    try {
-      // Delete the user
-      $delete_query = "DELETE FROM users WHERE user_id = ?";
-      $delete_stmt = $conn->prepare($delete_query);
-      $delete_stmt->bind_param("i", $user_id);
+    $stmt = $conn->prepare("DELETE FROM users WHERE user_id = ?");
+    $stmt->bind_param("i", $user_id);
 
-      if ($delete_stmt->execute()) {
-        error_log("Deletion successful for user $user_id");
-        return [
-          'status' => 'success',
-          'message' => 'User deleted successfully.'
-        ];
-      } else {
-        error_log("Deletion failed: " . $conn->error);
-        return [
-          'status' => 'error',
-          'message' => 'Failed to delete user. Error: ' . $conn->error
-        ];
-      }
-    } catch (Exception $e) {
-      error_log("Deletion error: " . $e->getMessage());
-      return [
-        'status' => 'error',
-        'message' => 'Database error: ' . $e->getMessage()
-      ];
-    }
+    return $stmt->execute() ?
+      ['status' => 'success', 'message' => 'User deleted'] :
+      ['status' => 'error', 'message' => 'Deletion failed: ' . $conn->error];
   }
 
   // Modified show_admin_users function
   function show_admin_users()
   {
     global $conn;
-    echo "<!-- DEBUG: show_admin_users function called -->";
 
     echo '<div class="admin-users">';
-    if (isset($_GET['success'])) {
-      echo '<div class="alert success">' . htmlspecialchars($_GET['success']) . '</div>';
-      echo "<!-- DEBUG: Success message displayed -->";
-    }
-    if (isset($_GET['error'])) {
-      echo '<div class="alert error">' . htmlspecialchars($_GET['error']) . '</div>';
-      echo "<!-- DEBUG: Error message displayed -->";
-    }
+    if (isset($_GET['success'])) echo '<div class="success">' . htmlspecialchars($_GET['success']) . '</div>';
+    if (isset($_GET['error'])) echo '<div class="error">' . htmlspecialchars($_GET['error']) . '</div>';
 
-    $users = $conn->query("SELECT * FROM users");
-    echo "<!-- DEBUG: Retrieved " . $users->num_rows . " users -->";
+    $users = $conn->query("SELECT * FROM users ORDER BY user_id DESC");
+    echo '<table>
+            <tr>
+                <th>ID</th>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Actions</th>
+            </tr>';
 
-    echo '<table>';
     while ($user = $users->fetch_assoc()) {
-      echo "<!-- DEBUG: Rendering user " . $user['user_id'] . " -->";
       echo '<tr>
                 <td>' . $user['user_id'] . '</td>
-                <td>' . $user['username'] . '</td>
-                <td>' . $user['email'] . '</td>
+                <td>' . htmlspecialchars($user['username']) . '</td>
+                <td>' . htmlspecialchars($user['email']) . '</td>
                 <td>' . $user['role'] . '</td>
                 <td>
                     <a href="?delete=' . $user['user_id'] . '"
-                       onclick="return confirm(\'Delete ' . htmlspecialchars($user['username']) . '? This cannot be undone!\')"
+                       onclick="return confirm(\'Delete ' . htmlspecialchars($user['username']) . '?\')"
                        class="delete-btn">Delete</a>
                 </td>
               </tr>';
     }
     echo '</table></div>';
   }
+
+
 
   function show_admin_reports()
   {
