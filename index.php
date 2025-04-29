@@ -654,55 +654,7 @@ function admin_block_user($user_id, $days)
   }
 }
 
-/**
- * Function for admin to delete a user
- *
- * @param int $user_id - ID of the user to delete
- * @param int $admin_id - ID of the admin performing the action
- * @return array - Status and message
- */
-function admin_delete_user($user_id, $admin_id)
-{
-  global $conn;
 
-  if (isset($_GET['delete']) && is_admin()) {
-    $target_user = (int)$_GET['delete'];
-    $admin_id = $_SESSION['user_id'];
-
-    $result = admin_delete_user($target_user, $admin_id);
-
-    if ($result['status'] === 'success') {
-      header("Location: " . $_SERVER['PHP_SELF'] . "?success=" . urlencode($result['message']));
-    } else {
-      header("Location: " . $_SERVER['PHP_SELF'] . "?error=" . urlencode($result['message']));
-    }
-    exit;
-  }
-  // Prevent deleting yourself
-  if ($user_id == $admin_id) {
-    return [
-      'status' => 'error',
-      'message' => 'You cannot delete your own admin account.'
-    ];
-  }
-
-  // Delete the user
-  $delete_query = "DELETE FROM users WHERE user_id = ?";
-  $delete_stmt = $conn->prepare($delete_query);
-  $delete_stmt->bind_param("i", $user_id);
-
-  if ($delete_stmt->execute()) {
-    return [
-      'status' => 'success',
-      'message' => 'User deleted successfully.'
-    ];
-  } else {
-    return [
-      'status' => 'error',
-      'message' => 'Failed to delete user.'
-    ];
-  }
-}
 
 /**
  * Function for admin to resolve a report
@@ -1984,6 +1936,56 @@ LIMIT 5";
       echo "</div>";
     } else {
       echo "<div class='error-message'>You do not have permission to access this page.</div>";
+    }
+  }
+
+  /**
+   * Function for admin to delete a user
+   *
+   * @param int $user_id - ID of the user to delete
+   * @param int $admin_id - ID of the admin performing the action
+   * @return array - Status and message
+   */
+  function admin_delete_user($user_id, $admin_id)
+  {
+    global $conn;
+
+    if (isset($_GET['delete']) && is_admin()) {
+      $target_user = (int)$_GET['delete'];
+      $admin_id = $_SESSION['user_id'];
+
+      $result = admin_delete_user($target_user, $admin_id);
+
+      if ($result['status'] === 'success') {
+        header("Location: " . $_SERVER['PHP_SELF'] . "?success=" . urlencode($result['message']));
+      } else {
+        header("Location: " . $_SERVER['PHP_SELF'] . "?error=" . urlencode($result['message']));
+      }
+      exit;
+    }
+    // Prevent deleting yourself
+    if ($user_id == $admin_id) {
+      return [
+        'status' => 'error',
+        'message' => 'You cannot delete your own admin account.'
+      ];
+    }
+
+    // Delete the user
+    $delete_query = "DELETE FROM users WHERE user_id = ?";
+    $delete_stmt = $conn->prepare($delete_query);
+    $delete_stmt->bind_param("i", $user_id);
+
+    if ($delete_stmt->execute()) {
+      return [
+        'status' => 'success',
+        'message' => 'User deleted successfully.'
+      ];
+    } else {
+      return [
+        'status' => 'error',
+        'message' => 'Failed to delete user.'
+      ];
     }
   }
 
