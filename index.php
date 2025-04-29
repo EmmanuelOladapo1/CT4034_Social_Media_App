@@ -1536,15 +1536,11 @@ function show_login_page()
           // Add to registration form
 
           <div class="form-group">
-            <label for="verification_pin">Verification PIN (6 digits)</label>
-            <input type="text" id="verification_pin" name="verification_pin" required pattern="\d{6}" placeholder="Enter your 6-digit verification PIN">
-          </div>
-
-          <div class="form-group">
             <label for="security_answer">Security Answer</label>
             <input type="text" id="security_answer" name="security_answer" required placeholder="Enter your answer to the security question">
           </div>
 
+          // Register As section
           echo "<div class='form-group'>
             <label>Register As:</label>
             <div class='radio-group'>
@@ -1555,6 +1551,7 @@ function show_login_page()
 
             </div>
 
+            // Add this button
             echo "<div class='form-group'>
               <button type='submit' name='register' class='btn btn-primary'>Create Account</button>
             </div>" ;
