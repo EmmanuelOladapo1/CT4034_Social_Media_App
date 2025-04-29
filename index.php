@@ -1539,124 +1539,125 @@ function show_login_page()
             <input type="text" id="security_answer" name="security_answer" required placeholder="Enter your answer to the security question">
           </div>
 
-          // Register As section
-          echo "<div class='form-group'>
+          <div class="form-group">
+
             <label>Register As:</label>
-            <div class='radio-group'>
+
+            <div class="radio-group">
+
               <label>
-                <input type='radio' name='reg_role' value='user' checked> User
+                <input type="radio" name="reg_role" value="user" checked> User
+
               </label>
+
               <label>
+                <input type="radio" name="reg_role" value="admin"> Admin
+
+              </label>
 
             </div>
 
-            // Add this button
-            echo "<div class='form-group'>
-              <button type='submit' name='register' class='btn btn-primary'>Create Account</button>
-            </div>" ;
+          </div>
 
-            <p class="form-toggle-link">Already have an account? <a href="#" id="show-login">Login now</a></p>
-        </form>
-      </div>
-    </div>
-  </main>
+          <div class="form-group">
+            <button type="submit" name="register" class="btn btn-primary">Create Account</button>
+          </div>
+          <script>
+            $(document).ready(function() {
+              // Toggle between login and registration forms
+              $('#show-register').click(function(e) {
+                e.preventDefault();
+                $('.login-form').hide();
+                $('.register-form').show();
+              });
 
-  <script>
-    $(document).ready(function() {
-      // Toggle between login and registration forms
-      $('#show-register').click(function(e) {
-        e.preventDefault();
-        $('.login-form').hide();
-        $('.register-form').show();
-      });
+              $('#show-login').click(function(e) {
+                e.preventDefault();
+                $('.register-form').hide();
+                $('.login-form').show();
+              });
 
-      $('#show-login').click(function(e) {
-        e.preventDefault();
-        $('.register-form').hide();
-        $('.login-form').show();
-      });
-
-      // Show register form if there was an error or success message
-      <?php if (!empty($register_error) || !empty($register_success)): ?>
-        $('.login-form').hide();
-        $('.register-form').show();
-      <?php endif; ?>
-    });
-  </script>
-<?php
-}
-
-/**
- * Show the home page with news feed
- */
-function show_home_page()
-{
-  global $conn;
-  $user_id = $_SESSION['user_id'];
-  $post_message = '';
-
-  // Handle post submission first
-  if (isset($_POST['create_post'])) {
-    $content = $_POST['content'] ?? '';
-    $latitude = $_POST['latitude'] ?? null;
-    $longitude = $_POST['longitude'] ?? null;
-    $location_name = $_POST['location_name'] ?? null;
-    $image_path = null;
-
-    // Validate content
-    if (empty($content)) {
-      $post_message = 'Post content cannot be empty.';
-    } else {
-      $content = sanitize_input($content);
-
-      // Handle image upload
-      if (isset($_FILES['post_image']) && $_FILES['post_image']['error'] == 0) {
-        $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
-        $max_size = 5 * 1024 * 1024;
-
-        if (!in_array($_FILES['post_image']['type'], $allowed_types)) {
-          $post_message = 'Only JPG, PNG and GIF images are allowed.';
-        } elseif ($_FILES['post_image']['size'] > $max_size) {
-          $post_message = 'Image size should not exceed 5 MB.';
-        } else {
-          $filename = uniqid() . '_' . basename($_FILES['post_image']['name']);
-          $upload_dir = 'uploads/';
-
-          if (!file_exists($upload_dir)) {
-            mkdir($upload_dir, 0777, true);
-          }
-
-          $upload_path = $upload_dir . $filename;
-          if (move_uploaded_file($_FILES['post_image']['tmp_name'], $upload_path)) {
-            $image_path = $upload_path;
-          }
-        }
+              // Show register form if there was an error or success message
+              <?php if (!empty($register_error) || !empty($register_success)): ?>
+                $('.login-form').hide();
+                $('.register-form').show();
+              <?php endif; ?>
+            });
+          </script>
+        <?php
       }
 
-      // Create post if no errors
-      if (empty($post_message)) {
-        $result = create_post($user_id, $content, $image_path, $latitude, $longitude, $location_name);
-        if ($result['status'] == 'success') {
-          header('Location: index.php?page=home&posted=1');
-          exit;
+      /**
+       * Show the home page with news feed
+       */
+      function show_home_page()
+      {
+        global $conn;
+        $user_id = $_SESSION['user_id'];
+        $post_message = '';
+
+        // Handle post submission first
+        if (isset($_POST['create_post'])) {
+          $content = $_POST['content'] ?? '';
+          $latitude = $_POST['latitude'] ?? null;
+          $longitude = $_POST['longitude'] ?? null;
+          $location_name = $_POST['location_name'] ?? null;
+          $image_path = null;
+
+          // Validate content
+          if (empty($content)) {
+            $post_message = 'Post content cannot be empty.';
+          } else {
+            $content = sanitize_input($content);
+
+            // Handle image upload
+            if (isset($_FILES['post_image']) && $_FILES['post_image']['error'] == 0) {
+              $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
+              $max_size = 5 * 1024 * 1024;
+
+              if (!in_array($_FILES['post_image']['type'], $allowed_types)) {
+                $post_message = 'Only JPG, PNG and GIF images are allowed.';
+              } elseif ($_FILES['post_image']['size'] > $max_size) {
+                $post_message = 'Image size should not exceed 5 MB.';
+              } else {
+                $filename = uniqid() . '_' . basename($_FILES['post_image']['name']);
+                $upload_dir = 'uploads/';
+
+                if (!file_exists($upload_dir)) {
+                  mkdir($upload_dir, 0777, true);
+                }
+
+                $upload_path = $upload_dir . $filename;
+                if (move_uploaded_file($_FILES['post_image']['tmp_name'], $upload_path)) {
+                  $image_path = $upload_path;
+                }
+              }
+            }
+
+            // Create post if no errors
+            if (empty($post_message)) {
+              $result = create_post($user_id, $content, $image_path, $latitude, $longitude, $location_name);
+              if ($result['status'] == 'success') {
+                header('Location: index.php?page=home&posted=1');
+                exit;
+              }
+            }
+          }
         }
-      }
-    }
-  }
 
-  // Display success message
-  if (isset($_GET['posted']) && $_GET['posted'] == '1') {
-    echo "<div class='success-message'>✅ Post submitted successfully!</div>";
-  }
+        // Display success message
+        if (isset($_GET['posted']) && $_GET['posted'] == '1') {
+          echo "<div class='success-message'>✅ Post submitted successfully!</div>";
+        }
 
-  // Get user info
-  $stmt = $conn->prepare("SELECT * FROM users WHERE user_id = ?");
-  $stmt->bind_param("i", $user_id);
-  $stmt->execute();
-  $user = $stmt->get_result()->fetch_assoc();
-  $stmt->close();
+        // Get user info
+        $stmt = $conn->prepare("SELECT * FROM users WHERE user_id = ?");
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        $user = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
 
-  echo "<div class='profile-info'>
+        echo "<div class='profile-info'>
           <h2>{$user['username']}</h2>
           <p>Email: {$user['email']}</p>
         </div>
@@ -1665,8 +1666,8 @@ function show_home_page()
           <a href='index.php?page=logout' class='btn-logout'>Logout</a>
         </div>";
 
-  // Get posts
-  $stmt = $conn->prepare("SELECT p.*, u.username, u.profile_pic,
+        // Get posts
+        $stmt = $conn->prepare("SELECT p.*, u.username, u.profile_pic,
                         (SELECT COUNT(*) FROM likes WHERE post_id = p.post_id) AS like_count,
                         (SELECT COUNT(*) FROM comments WHERE post_id = p.post_id) AS comment_count,
                         (SELECT COUNT(*) FROM likes WHERE post_id = p.post_id AND user_id = ?) AS user_liked
@@ -1675,16 +1676,16 @@ function show_home_page()
                         WHERE p.user_id NOT IN (SELECT blocked_id FROM blocked_users WHERE blocker_id = ?)
                         ORDER BY p.created_at DESC
                         LIMIT 20");
-  $stmt->bind_param("ii", $user_id, $user_id);
-  $stmt->execute();
-  $posts_result = $stmt->get_result();
+        $stmt->bind_param("ii", $user_id, $user_id);
+        $stmt->execute();
+        $posts_result = $stmt->get_result();
 
-  // Display posts
-  echo "<div class='debug-info'>📄 Found {$posts_result->num_rows} posts in database</div>";
+        // Display posts
+        echo "<div class='debug-info'>📄 Found {$posts_result->num_rows} posts in database</div>";
 
-  if ($posts_result->num_rows > 0) {
-    while ($post = $posts_result->fetch_assoc()) {
-      echo "<div class='post'>
+        if ($posts_result->num_rows > 0) {
+          while ($post = $posts_result->fetch_assoc()) {
+            echo "<div class='post'>
         <div class='post-header'>
           <img src='" . htmlspecialchars($post['profile_pic']) . "' class='post-avatar'>
           <h3>" . htmlspecialchars($post['username']) . "</h3>
@@ -1692,41 +1693,41 @@ function show_home_page()
         <div class='post-content'>" . nl2br(htmlspecialchars($post['content'])) . "</div>";
 
 
-      if (!empty($post['image'])) {
-        echo "<img src='" . htmlspecialchars($post['image']) . "' class='post-image'>";
-      }
+            if (!empty($post['image'])) {
+              echo "<img src='" . htmlspecialchars($post['image']) . "' class='post-image'>";
+            }
 
-      // Display location if available
+            // Display location if available
 
-      if (!empty($post['location_name']) || (!empty($post['latitude']) && !empty($post['longitude']))) {
+            if (!empty($post['location_name']) || (!empty($post['latitude']) && !empty($post['longitude']))) {
 
-        echo "<div class='post-location'>📍 ";
-        echo "<div class='post-actions'><form method='post' action='index.php?page=like_post' style='display:inline'><input type='hidden' name='post_id' value='{$post['post_id']}'><button type='submit' class='like-btn'>Like ({$post['like_count']})</button></form> <form style='display:inline' action='index.php?page=add_comment' method='post'><input type='hidden' name='post_id' value='{$post['post_id']}'><input type='text' name='content' placeholder='Comment...' required><button type='submit'>Comment</button></form></div>";
-        echo !empty($post['location_name'])
-          ? htmlspecialchars($post['location_name'])
-          : 'Coordinates: ' . htmlspecialchars($post['latitude']) . ', ' . htmlspecialchars($post['longitude']);
+              echo "<div class='post-location'>📍 ";
+              echo "<div class='post-actions'><form method='post' action='index.php?page=like_post' style='display:inline'><input type='hidden' name='post_id' value='{$post['post_id']}'><button type='submit' class='like-btn'>Like ({$post['like_count']})</button></form> <form style='display:inline' action='index.php?page=add_comment' method='post'><input type='hidden' name='post_id' value='{$post['post_id']}'><input type='text' name='content' placeholder='Comment...' required><button type='submit'>Comment</button></form></div>";
+              echo !empty($post['location_name'])
+                ? htmlspecialchars($post['location_name'])
+                : 'Coordinates: ' . htmlspecialchars($post['latitude']) . ', ' . htmlspecialchars($post['longitude']);
 
-        echo "</div>";
-      }
+              echo "</div>";
+            }
 
-      echo "</div>";
-    }
-  }
+            echo "</div>";
+          }
+        }
 
 
 
-  // Post creation form
-  echo '<form method="POST" enctype="multipart/form-data">
+        // Post creation form
+        echo '<form method="POST" enctype="multipart/form-data">
           <textarea name="content" placeholder="What\'s on your mind?"></textarea>
           <input type="file" name="post_image">
           <button type="submit" name="create_post">Post</button>
         </form>';
 
-  $stmt->close();
-}
+        $stmt->close();
+      }
 
-// Get posts for the news feed
-$query = "SELECT p.*, u.username, u.profile_pic,
+      // Get posts for the news feed
+      $query = "SELECT p.*, u.username, u.profile_pic,
               (SELECT COUNT(*) FROM likes WHERE post_id = p.post_id) AS like_count,
               (SELECT COUNT(*) FROM comments WHERE post_id = p.post_id) AS comment_count,
               (SELECT COUNT(*) FROM likes WHERE post_id = p.post_id AND user_id = ?) AS user_liked
@@ -1735,13 +1736,13 @@ $query = "SELECT p.*, u.username, u.profile_pic,
               WHERE p.user_id NOT IN (SELECT blocked_id FROM blocked_users WHERE blocker_id = ?)
               ORDER BY p.created_at DESC
               LIMIT 20";
-$stmt = $conn->prepare($query);
-$stmt->bind_param("ii", $user_id, $user_id);
-$stmt->execute();
-$posts_result = $stmt->get_result();
-$stmt->close();
+      $stmt = $conn->prepare($query);
+      $stmt->bind_param("ii", $user_id, $user_id);
+      $stmt->execute();
+      $posts_result = $stmt->get_result();
+      $stmt->close();
 
-echo "<div class='create-post'>
+      echo "<div class='create-post'>
   <form action='index.php?page=home' method='post' enctype='multipart/form-data'>
     <textarea name='content' placeholder='What&#39;s on your mind?'></textarea>
     <div class='post-actions'>
@@ -1757,8 +1758,8 @@ echo "<div class='create-post'>
   </form>
 </div>";
 
-// Update the getLocation function
-echo "<script>
+      // Update the getLocation function
+      echo "<script>
 function getLocation() {
     const status = document.getElementById('locationStatus');
     status.textContent = 'Getting location...';
@@ -1822,8 +1823,8 @@ function getLocation() {
 }
 </script>";
 
-// Get online friends
-$friends_query = "SELECT u.user_id, u.username, u.profile_pic
+      // Get online friends
+      $friends_query = "SELECT u.user_id, u.username, u.profile_pic
 FROM users u
 WHERE u.user_id != ?
 AND u.user_id NOT IN (
@@ -1832,139 +1833,139 @@ AND u.user_id NOT IN (
 ORDER BY u.last_activity DESC
 LIMIT 5";
 
-$friends_stmt = $conn->prepare($friends_query);
-$friends_stmt->bind_param("ii", $user_id, $user_id);
-$friends_stmt->execute();
-$friends_result = $friends_stmt->get_result();
-$online_friends = $friends_result->fetch_all(MYSQLI_ASSOC);
-$friends_stmt->close();
+      $friends_stmt = $conn->prepare($friends_query);
+      $friends_stmt->bind_param("ii", $user_id, $user_id);
+      $friends_stmt->execute();
+      $friends_result = $friends_stmt->get_result();
+      $online_friends = $friends_result->fetch_all(MYSQLI_ASSOC);
+      $friends_stmt->close();
 
-// Display friends section
-if (!empty($online_friends)) {
-  echo '<div class="online-friends">';
-  echo '<h4>Online Friends</h4>';
-  foreach ($online_friends as $friend) {
-    echo '<div class="friend">';
-    echo '<img src="' . htmlspecialchars($friend['profile_pic']) . '" alt="' . htmlspecialchars($friend['username']) . '">';
-    echo '<span>' . htmlspecialchars($friend['username']) . '</span>';
-    echo '</div>';
-  }
-  echo '</div>';
-}
+      // Display friends section
+      if (!empty($online_friends)) {
+        echo '<div class="online-friends">';
+        echo '<h4>Online Friends</h4>';
+        foreach ($online_friends as $friend) {
+          echo '<div class="friend">';
+          echo '<img src="' . htmlspecialchars($friend['profile_pic']) . '" alt="' . htmlspecialchars($friend['username']) . '">';
+          echo '<span>' . htmlspecialchars($friend['username']) . '</span>';
+          echo '</div>';
+        }
+        echo '</div>';
+      }
 
-/**
- * Show 404 page not found
- */
-function show_404_page()
-{
-?>
-  <div class="error-container text-center">
-    <h1>404</h1>
-    <h2>Page Not Found</h2>
-    <p>The page you are looking for does not exist.</p>
-    <a href="index.php" class="btn btn-primary">Go Home</a>
-  </div>
-<?php
-}
+      /**
+       * Show 404 page not found
+       */
+      function show_404_page()
+      {
+        ?>
+          <div class="error-container text-center">
+            <h1>404</h1>
+            <h2>Page Not Found</h2>
+            <p>The page you are looking for does not exist.</p>
+            <a href="index.php" class="btn btn-primary">Go Home</a>
+          </div>
+        <?php
+      }
 
-/**
- * Placeholder functions for other pages - implement these as needed
- */
-function show_profile_page()
-{
-  global $conn;
-  $user_id = $_SESSION['user_id'];
-  $profile_id = isset($_GET['id']) ? (int)$_GET['id'] : $user_id;
-  $query = "SELECT * FROM users WHERE user_id = ?";
-  $stmt = $conn->prepare($query);
-  $stmt->bind_param("i", $profile_id); // Changed to use profile_id instead of user_id
-  $stmt->execute();
-  $user = $stmt->get_result()->fetch_assoc();
+      /**
+       * Placeholder functions for other pages - implement these as needed
+       */
+      function show_profile_page()
+      {
+        global $conn;
+        $user_id = $_SESSION['user_id'];
+        $profile_id = isset($_GET['id']) ? (int)$_GET['id'] : $user_id;
+        $query = "SELECT * FROM users WHERE user_id = ?";
+        $stmt = $conn->prepare($query);
+        $stmt->bind_param("i", $profile_id); // Changed to use profile_id instead of user_id
+        $stmt->execute();
+        $user = $stmt->get_result()->fetch_assoc();
 
-  echo "<div class='profile-card'><img src='" . ($user['profile_pic'] ?: 'uploads/default.jpg') . "' alt='Profile' class='profile-icon'></div>
+        echo "<div class='profile-card'><img src='" . ($user['profile_pic'] ?: 'uploads/default.jpg') . "' alt='Profile' class='profile-icon'></div>
     <div class='profile-info'><h2>" . $user['username'] . "</h2><p>Email: " . $user['email'] . "</p></div>
     <div class='profile-actions'>" . ($user_id == $profile_id ? "<button onclick='changePassword()'>Change Password</button><a href='index.php?page=logout' class='btn-logout'>Logout</a>" : "<a href='index.php?page=block_user&id={$profile_id}' class='btn-action'>Block User</a> <a href='#' onclick='showReportForm()' class='btn-action'>Report User</a>") . "</div>" . ($user_id != $profile_id ? "<form id='report-form' style='display:none' method='post' action='index.php?page=report_user'><input type='hidden' name='reported_id' value='{$profile_id}'><textarea name='reason' placeholder='Why are you reporting this user?'></textarea><button type='submit'>Submit</button></form>" : "");
-}
+      }
 
-function show_messages_page()
-{
-  global $conn;
-  $user_id = $_SESSION['user_id'];
-  $query = "SELECT m.*, u.username FROM messages m JOIN users u ON m.sender_id = u.user_id WHERE m.receiver_id = ? ORDER BY m.created_at DESC";
-  $stmt = $conn->prepare($query);
-  $stmt->bind_param("i", $user_id);
-  $stmt->execute();
-  $messages = $stmt->get_result();
+      function show_messages_page()
+      {
+        global $conn;
+        $user_id = $_SESSION['user_id'];
+        $query = "SELECT m.*, u.username FROM messages m JOIN users u ON m.sender_id = u.user_id WHERE m.receiver_id = ? ORDER BY m.created_at DESC";
+        $stmt = $conn->prepare($query);
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        $messages = $stmt->get_result();
 
-  echo "<div class='messages-container'><h2>Your Messages</h2>" . ($messages->num_rows > 0 ? "<div class='message-list'>" . implode('', array_map(function ($msg) {
-    return "<div class='message'><strong>" . $msg['username'] . ":</strong> " . $msg['content'] . "</div>";
-  }, $messages->fetch_all(MYSQLI_ASSOC))) . "</div>" : "<p>No messages yet</p>") . "<form method='post' action='index.php?page=send_message'><input type='text' name='content' placeholder='Type a message'><input type='text' name='username' placeholder='Username'><button type='submit'>Send</button></form></div>";
-}
+        echo "<div class='messages-container'><h2>Your Messages</h2>" . ($messages->num_rows > 0 ? "<div class='message-list'>" . implode('', array_map(function ($msg) {
+          return "<div class='message'><strong>" . $msg['username'] . ":</strong> " . $msg['content'] . "</div>";
+        }, $messages->fetch_all(MYSQLI_ASSOC))) . "</div>" : "<p>No messages yet</p>") . "<form method='post' action='index.php?page=send_message'><input type='text' name='content' placeholder='Type a message'><input type='text' name='username' placeholder='Username'><button type='submit'>Send</button></form></div>";
+      }
 
-// Modified admin dashboard function
+      // Modified admin dashboard function
 
-function show_admin_dashboard()
+      function show_admin_dashboard()
 
-{
-  global $conn;
-  echo '<div class="admin-dashboard">';
-  echo '<h2>Admin Dashboard</h2>';
-  echo '<p>Welcome, ' . htmlspecialchars($_SESSION['username']) . '!</p>'; // Fixed welcome message
-  show_admin_users();
-  show_admin_reports();
-  echo '</div>';
-}
+      {
+        global $conn;
+        echo '<div class="admin-dashboard">';
+        echo '<h2>Admin Dashboard</h2>';
+        echo '<p>Welcome, ' . htmlspecialchars($_SESSION['username']) . '!</p>'; // Fixed welcome message
+        show_admin_users();
+        show_admin_reports();
+        echo '</div>';
+      }
 
-/**
- * Function for admin to delete a user
- *
- * @param int $user_id - ID of the user to delete
- * @param int $admin_id - ID of the admin performing the action
- * @return array - Status and message
- */
+      /**
+       * Function for admin to delete a user
+       *
+       * @param int $user_id - ID of the user to delete
+       * @param int $admin_id - ID of the admin performing the action
+       * @return array - Status and message
+       */
 
-if (isset($_GET['delete']) && is_admin()) {
-  $target_user = (int)$_GET['delete'];
-  $admin_id = $_SESSION['user_id'];
+      if (isset($_GET['delete']) && is_admin()) {
+        $target_user = (int)$_GET['delete'];
+        $admin_id = $_SESSION['user_id'];
 
-  $result = admin_delete_user($target_user, $admin_id);
+        $result = admin_delete_user($target_user, $admin_id);
 
-  $redirect_url = "index.php?page=admin_dashboard" .
-    ($result['status'] === 'success' ? "&success=" : "&error=") .
-    urlencode($result['message']);
+        $redirect_url = "index.php?page=admin_dashboard" .
+          ($result['status'] === 'success' ? "&success=" : "&error=") .
+          urlencode($result['message']);
 
-  header("Location: $redirect_url");
-  exit;
-}
+        header("Location: $redirect_url");
+        exit;
+      }
 
-// Keep original admin_delete_user function
-function admin_delete_user($user_id, $admin_id)
-{
-  global $conn;
+      // Keep original admin_delete_user function
+      function admin_delete_user($user_id, $admin_id)
+      {
+        global $conn;
 
-  if ($user_id == $admin_id) {
-    return ['status' => 'error', 'message' => 'Cannot delete your own account'];
-  }
+        if ($user_id == $admin_id) {
+          return ['status' => 'error', 'message' => 'Cannot delete your own account'];
+        }
 
-  $stmt = $conn->prepare("DELETE FROM users WHERE user_id = ?");
-  $stmt->bind_param("i", $user_id);
+        $stmt = $conn->prepare("DELETE FROM users WHERE user_id = ?");
+        $stmt->bind_param("i", $user_id);
 
-  return $stmt->execute() ?
-    ['status' => 'success', 'message' => 'User deleted'] :
-    ['status' => 'error', 'message' => 'Deletion failed: ' . $conn->error];
-}
+        return $stmt->execute() ?
+          ['status' => 'success', 'message' => 'User deleted'] :
+          ['status' => 'error', 'message' => 'Deletion failed: ' . $conn->error];
+      }
 
-// Modified show_admin_users function
-function show_admin_users()
-{
-  global $conn;
+      // Modified show_admin_users function
+      function show_admin_users()
+      {
+        global $conn;
 
-  echo '<div class="admin-users">';
-  if (isset($_GET['success'])) echo '<div class="success">' . htmlspecialchars($_GET['success']) . '</div>';
-  if (isset($_GET['error'])) echo '<div class="error">' . htmlspecialchars($_GET['error']) . '</div>';
+        echo '<div class="admin-users">';
+        if (isset($_GET['success'])) echo '<div class="success">' . htmlspecialchars($_GET['success']) . '</div>';
+        if (isset($_GET['error'])) echo '<div class="error">' . htmlspecialchars($_GET['error']) . '</div>';
 
-  $users = $conn->query("SELECT * FROM users ORDER BY user_id DESC");
-  echo '<table>
+        $users = $conn->query("SELECT * FROM users ORDER BY user_id DESC");
+        echo '<table>
             <tr>
                 <th>ID</th>
                 <th>Username</th>
@@ -1973,8 +1974,8 @@ function show_admin_users()
                 <th>Actions</th>
             </tr>';
 
-  while ($user = $users->fetch_assoc()) {
-    echo '<tr>
+        while ($user = $users->fetch_assoc()) {
+          echo '<tr>
                 <td>' . $user['user_id'] . '</td>
                 <td>' . htmlspecialchars($user['username']) . '</td>
                 <td>' . htmlspecialchars($user['email']) . '</td>
@@ -1985,25 +1986,25 @@ function show_admin_users()
                        class="delete-btn">Delete</a>
                 </td>
               </tr>';
-  }
-  echo '</table></div>';
-}
+        }
+        echo '</table></div>';
+      }
 
-function show_admin_reports()
-{
-  global $conn;
-  $action = isset($_POST['action']) ? sanitize_input($_POST['action']) : '';
-  $user_id = isset($_POST['user_id']) ? (int)$_POST['user_id'] : 0;
-  $report_id = isset($_POST['report_id']) ? (int)$_POST['report_id'] : 0;
-  $period = isset($_GET['period']) ? sanitize_input($_GET['period']) : 'month';
-  if ($action == 'block' && $user_id) admin_block_user($user_id, 30);
-  elseif ($action == 'verify' && $user_id) $conn->query("UPDATE users SET id_verification_required = 1 WHERE user_id = $user_id");
-  elseif ($action == 'resolve' && $report_id) $conn->query("UPDATE reports SET status = 'resolved' WHERE report_id = $report_id");
-  $posts_report = $conn->query("SELECT u.username, COUNT(p.post_id) as post_count FROM users u LEFT JOIN posts p ON u.user_id = p.user_id " . ($period == 'week' ? "AND YEARWEEK(p.created_at) = YEARWEEK(NOW())" : ($period == 'month' ? "AND MONTH(p.created_at) = MONTH(NOW()) AND YEAR(p.created_at) = YEAR(NOW())" : "AND YEAR(p.created_at) = YEAR(NOW())")) . " GROUP BY u.user_id ORDER BY post_count DESC")->fetch_all(MYSQLI_ASSOC);
-  $user_reports = $conn->query("SELECT r.*, reporter.username as reporter_name, reported.username as reported_name FROM reports r JOIN users reporter ON r.reporter_id = reporter.user_id JOIN users reported ON r.reported_id = reported.user_id WHERE r.status = 'pending' ORDER BY r.created_at DESC")->fetch_all(MYSQLI_ASSOC);
-  echo "<div class='admin-container'><h2>Post Activity Report (" . ucfirst($period) . ")</h2><div class='period-selector'><a href='?page=admin_reports&period=week'>Weekly</a> | <a href='?page=admin_reports&period=month'>Monthly</a> | <a href='?page=admin_reports&period=year'>Yearly</a></div><table class='report-table'><tr><th>Username</th><th>Posts</th></tr>" . implode('', array_map(function ($row) {
-    return "<tr><td>{$row['username']}</td><td>{$row['post_count']}</td></tr>";
-  }, $posts_report)) . "</table><h2 class='mt-4'>User Reports</h2><table class='report-table mt-2'><tr><th>Reporter</th><th>Reported User</th><th>Reason</th><th>Date</th><th>Actions</th></tr>" . implode('', array_map(function ($r) {
-    return "<tr><td>{$r['reporter_name']}</td><td>{$r['reported_name']}</td><td>{$r['reason']}</td><td>{$r['created_at']}</td><td><form method='post'><input type='hidden' name='user_id' value='{$r['reported_id']}'><input type='hidden' name='report_id' value='{$r['report_id']}'><button name='action' value='block'>Block 30d</button> <button name='action' value='verify'>Request ID</button> <button name='action' value='resolve'>Resolve</button></form></td></tr>";
-  }, $user_reports)) . "</table></div>";
-}
+      function show_admin_reports()
+      {
+        global $conn;
+        $action = isset($_POST['action']) ? sanitize_input($_POST['action']) : '';
+        $user_id = isset($_POST['user_id']) ? (int)$_POST['user_id'] : 0;
+        $report_id = isset($_POST['report_id']) ? (int)$_POST['report_id'] : 0;
+        $period = isset($_GET['period']) ? sanitize_input($_GET['period']) : 'month';
+        if ($action == 'block' && $user_id) admin_block_user($user_id, 30);
+        elseif ($action == 'verify' && $user_id) $conn->query("UPDATE users SET id_verification_required = 1 WHERE user_id = $user_id");
+        elseif ($action == 'resolve' && $report_id) $conn->query("UPDATE reports SET status = 'resolved' WHERE report_id = $report_id");
+        $posts_report = $conn->query("SELECT u.username, COUNT(p.post_id) as post_count FROM users u LEFT JOIN posts p ON u.user_id = p.user_id " . ($period == 'week' ? "AND YEARWEEK(p.created_at) = YEARWEEK(NOW())" : ($period == 'month' ? "AND MONTH(p.created_at) = MONTH(NOW()) AND YEAR(p.created_at) = YEAR(NOW())" : "AND YEAR(p.created_at) = YEAR(NOW())")) . " GROUP BY u.user_id ORDER BY post_count DESC")->fetch_all(MYSQLI_ASSOC);
+        $user_reports = $conn->query("SELECT r.*, reporter.username as reporter_name, reported.username as reported_name FROM reports r JOIN users reporter ON r.reporter_id = reporter.user_id JOIN users reported ON r.reported_id = reported.user_id WHERE r.status = 'pending' ORDER BY r.created_at DESC")->fetch_all(MYSQLI_ASSOC);
+        echo "<div class='admin-container'><h2>Post Activity Report (" . ucfirst($period) . ")</h2><div class='period-selector'><a href='?page=admin_reports&period=week'>Weekly</a> | <a href='?page=admin_reports&period=month'>Monthly</a> | <a href='?page=admin_reports&period=year'>Yearly</a></div><table class='report-table'><tr><th>Username</th><th>Posts</th></tr>" . implode('', array_map(function ($row) {
+          return "<tr><td>{$row['username']}</td><td>{$row['post_count']}</td></tr>";
+        }, $posts_report)) . "</table><h2 class='mt-4'>User Reports</h2><table class='report-table mt-2'><tr><th>Reporter</th><th>Reported User</th><th>Reason</th><th>Date</th><th>Actions</th></tr>" . implode('', array_map(function ($r) {
+          return "<tr><td>{$r['reporter_name']}</td><td>{$r['reported_name']}</td><td>{$r['reason']}</td><td>{$r['created_at']}</td><td><form method='post'><input type='hidden' name='user_id' value='{$r['reported_id']}'><input type='hidden' name='report_id' value='{$r['report_id']}'><button name='action' value='block'>Block 30d</button> <button name='action' value='verify'>Request ID</button> <button name='action' value='resolve'>Resolve</button></form></td></tr>";
+        }, $user_reports)) . "</table></div>";
+      }
