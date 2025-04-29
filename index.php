@@ -23,8 +23,6 @@ if ($conn->connect_error) {
   die("Connection failed: " . $conn->connect_error);
 }
 
-
-
 /*
  * CORE FUNCTIONS SECTION
  */
@@ -294,18 +292,10 @@ function admin_login($username, $password)
   $stmt->bind_param("s", $username);
   $stmt->execute();
   $result = $stmt->get_result();
-
-  if ($result->num_rows == 0) {
-    return [
-      'status' => 'error',
-      'message' => 'Invalid admin credentials.'
-    ];
-  }
-
   $admin = $result->fetch_assoc();
 
   // Verify password
-  if (password_verify($password, $admin['password'])) {
+  if ($admin && password_verify($password, $admin['password'])) {
     // Start session and set admin data
     $_SESSION['user_id'] = $admin['user_id'];
     $_SESSION['username'] = $admin['username'];
@@ -321,6 +311,12 @@ function admin_login($username, $password)
       'message' => 'Invalid admin credentials.'
     ];
   }
+}
+if ($result->num_rows == 0) {
+  return [
+    'status' => 'error',
+    'message' => 'Invalid admin credentials.'
+  ];
 }
 
 /**
