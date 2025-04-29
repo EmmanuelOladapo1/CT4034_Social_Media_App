@@ -514,38 +514,20 @@ function get_comments($post_id)
  * @param string $reason - Reason for the report
  * @return array - Status and message
  */
-function report_user($reporter_id, $reported_id, $reason)
+
+function report_user($reporter_id, $reported_id, $reason, $pin = null)
 {
   global $conn;
-
-  // Sanitize reason
   $reason = sanitize_input($reason);
-
-  // Prevent reporting yourself
-  if ($reporter_id == $reported_id) {
-    return [
-      'status' => 'error',
-      'message' => 'You cannot report yourself.'
-    ];
-  }
-
-  // Add the report
+  if ($reporter_id == $reported_id) return ['status' => 'error', 'message' => 'You cannot report yourself.'];
+  if ($pin) $conn->query("UPDATE users SET verification_pin='" . sanitize_input($pin) . "' WHERE user_id=$reporter_id");
   $query = "INSERT INTO reports (reporter_id, reported_id, reason) VALUES (?, ?, ?)";
   $stmt = $conn->prepare($query);
   $stmt->bind_param("iis", $reporter_id, $reported_id, $reason);
-
-  if ($stmt->execute()) {
-    return [
-      'status' => 'success',
-      'message' => 'User reported successfully.'
-    ];
-  } else {
-    return [
-      'status' => 'error',
-      'message' => 'Failed to report user.'
-    ];
-  }
+  return $stmt->execute() ? ['status' => 'success', 'message' => 'User reported successfully.'] : ['status' => 'error', 'message' => 'Failed to report user.'];
 }
+
+
 
 /**
  * Function to block/unblock a user
@@ -1297,7 +1279,7 @@ function include_header($page)
     echo '<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
               <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>';
   }
-
+  echo "<script>$(document).ready(function() { $('.user-profile').hover(function() { $(this).find('.hover-actions').fadeIn(200); }, function() { $(this).find('.hover-actions').fadeOut(200); }); });</script>";
   echo '</head>
     <body>
         <div class="container">';
@@ -1879,13 +1861,16 @@ function show_profile_page()
   $profile_id = isset($_GET['id']) ? (int)$_GET['id'] : $user_id;
   $query = "SELECT * FROM users WHERE user_id = ?";
   $stmt = $conn->prepare($query);
-  $stmt->bind_param("i", $profile_id); // Changed to use profile_id instead of user_id
+  $stmt->bind_param("i", $profile_id);
   $stmt->execute();
   $user = $stmt->get_result()->fetch_assoc();
-
-  echo "<div class='profile-card'><img src='" . ($user['profile_pic'] ?: 'uploads/default.jpg') . "' alt='Profile' class='profile-icon'></div>
-    <div class='profile-info'><h2>" . $user['username'] . "</h2><p>Email: " . $user['email'] . "</p></div>
-    <div class='profile-actions'>" . ($user_id == $profile_id ? "<button onclick='changePassword()'>Change Password</button><a href='index.php?page=logout' class='btn-logout'>Logout</a>" : "<a href='index.php?page=block_user&id={$profile_id}' class='btn-action'>Block User</a> <a href='#' onclick='showReportForm()' class='btn-action'>Report User</a>") . "</div>" . ($user_id != $profile_id ? "<form id='report-form' style='display:none' method='post' action='index.php?page=report_user'><input type='hidden' name='reported_id' value='{$profile_id}'><textarea name='reason' placeholder='Why are you reporting this user?'></textarea><button type='submit'>Submit</button></form>" : "");
+  $blocked_users = $conn->query("SELECT u.username FROM blocked_users b JOIN users u ON b.blocked_id=u.user_id WHERE b.blocker_id=$user_id")->fetch_all(MYSQLI_ASSOC);
+  $reported_users = $conn->query("SELECT u.username FROM reports r JOIN users u ON r.reported_id=u.user_id WHERE r.reporter_id=$user_id GROUP BY r.reported_id")->fetch_all(MYSQLI_ASSOC);
+  echo "<div class='profile-card user-profile'><img src='" . ($user['profile_pic'] ?: 'uploads/default.jpg') . "' alt='Profile' class='profile-icon'></div><div class='profile-info'><h2>" . $user['username'] . "</h2><p>Email: " . $user['email'] . "</p></div><div class='profile-actions'>" . ($user_id == $profile_id ? "<button onclick='changePassword()'>Change Password</button><a href='index.php?page=logout' class='btn-logout'>Logout</a><div class='lists'><h3>Blocked Users</h3><ul>" . implode('', array_map(function ($u) {
+    return "<li>{$u['username']}</li>";
+  }, $blocked_users)) . "</ul><h3>Reported Users</h3><ul>" . implode('', array_map(function ($u) {
+    return "<li>{$u['username']}</li>";
+  }, $reported_users)) . "</ul></div>" : "<div class='hover-actions' style='display:none'><a href='index.php?page=block_user&id={$profile_id}' class='btn-action'>Block User</a> <a href='#' onclick='showReportForm()' class='btn-action'>Report User</a></div>") . "</div>" . ($user_id != $profile_id ? "<form id='report-form' style='display:none' method='post' action='index.php?page=report_user'><input type='hidden' name='reported_id' value='{$profile_id}'><textarea name='reason' placeholder='Why are you reporting this user?'></textarea><input type='text' name='pin' placeholder='Create a verification PIN'><button type='submit'>Submit</button></form>" : "");
 }
 
 function show_messages_page()
