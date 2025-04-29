@@ -279,35 +279,24 @@ function logout_user()
  * @return array - Status and message of the admin login process
  */
 
-function admin_login($username, $password)
+function admin_login($username, $password, $role = 'admin')
 {
   global $conn;
 
   // Sanitize inputs
   $username = sanitize_input($username);
-  $password = sanitize_input($password);
 
-  // Get admin user from database
-  $stmt = $conn->prepare("SELECT user_id, username, password FROM users WHERE username = ? AND role = 'admin'");
-  if (!$stmt) {
-    return ['status' => 'error', 'message' => 'Database error'];
-  }
-
-  $stmt->bind_param("s", $username);
-
+  // Get admin from database
+  $query = "SELECT user_id, username, password, role, FROM users WHERE username = ? AND role = ?";
+  $stmt = $conn->prepare($query);
+  $stmt->bind_param("ss", $username, $role);
   $stmt->execute();
-  if (!$stmt->execute()) {
-    return ['status' => 'error', 'message' => 'Query failed'];
-  }
-
-  // Single get_result() call
   $result = $stmt->get_result();
 
-  // Check for results first
   if ($result->num_rows == 0) {
     return [
       'status' => 'error',
-      'message' => 'Admin not found'
+      'message' => 'Invalid username or password.'
     ];
   }
 
