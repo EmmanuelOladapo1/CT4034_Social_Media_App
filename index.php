@@ -1534,7 +1534,6 @@ function show_login_page()
           </div>
 
           // Add to registration form
-
           <div class="form-group">
             <label for="security_answer">Security Answer</label>
             <input type="text" id="security_answer" name="security_answer" required placeholder="Enter your answer to the security question">
