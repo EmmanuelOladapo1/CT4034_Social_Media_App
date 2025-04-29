@@ -1553,18 +1553,13 @@ function show_login_page()
                 <input type='radio' name='reg_role' value='user' checked> User
               </label>
               <label>
-                <input type='radio' name='reg_role' value='admin'> Admin
-              </label>
-            </div>
-          </div>";
 
+                // Add this button
+                echo "<div class='form-group'>
+                  <button type='submit' name='register' class='btn btn-primary'>Create Account</button>
+                </div>" ;
 
-          // Add this button
-          echo "<div class='form-group'>
-            <button type='submit' name='register' class='btn btn-primary'>Create Account</button>
-          </div>" ;
-
-          <p class="form-toggle-link">Already have an account? <a href="#" id="show-login">Login now</a></p>
+                <p class="form-toggle-link">Already have an account? <a href="#" id="show-login">Login now</a></p>
         </form>
       </div>
     </div>
