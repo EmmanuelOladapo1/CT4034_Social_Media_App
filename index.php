@@ -1554,12 +1554,14 @@ function show_login_page()
               </label>
               <label>
 
-                // Add this button
-                echo "<div class='form-group'>
-                  <button type='submit' name='register' class='btn btn-primary'>Create Account</button>
-                </div>" ;
+            </div>
 
-                <p class="form-toggle-link">Already have an account? <a href="#" id="show-login">Login now</a></p>
+            // Add this button
+            echo "<div class='form-group'>
+              <button type='submit' name='register' class='btn btn-primary'>Create Account</button>
+            </div>" ;
+
+            <p class="form-toggle-link">Already have an account? <a href="#" id="show-login">Login now</a></p>
         </form>
       </div>
     </div>
