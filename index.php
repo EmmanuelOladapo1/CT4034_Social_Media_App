@@ -289,13 +289,33 @@ function admin_login($username, $password)
 
   // Get admin user from database
   $stmt = $conn->prepare("SELECT user_id, username, password FROM users WHERE username = ? AND role = 'admin'");
+  if (!$stmt) {
+    return ['status' => 'error', 'message' => 'Database error'];
+  }
+
   $stmt->bind_param("s", $username);
+
   $stmt->execute();
+  if (!$stmt->execute()) {
+    return ['status' => 'error', 'message' => 'Query failed'];
+  }
+
+  // Single get_result() call
   $result = $stmt->get_result();
+
+  // Check for results first
+  if ($result->num_rows == 0) {
+    return [
+      'status' => 'error',
+      'message' => 'Admin not found'
+    ];
+  }
+
+  // Only fetch if we have results
   $admin = $result->fetch_assoc();
 
   // Verify password
-  if ($admin && password_verify($password, $admin['password'])) {
+  if (password_verify($password, $admin['password'])) {
     // Start session and set admin data
     $_SESSION['user_id'] = $admin['user_id'];
     $_SESSION['username'] = $admin['username'];
@@ -305,16 +325,8 @@ function admin_login($username, $password)
       'status' => 'success',
       'message' => 'Admin login successful!'
     ];
-  } else {
-    return [
-      'status' => 'error',
-      'message' => 'Invalid admin credentials.'
-    ];
   }
-}
 
-$result = $stmt->get_result();
-if ($result->num_rows == 0) {
   return [
     'status' => 'error',
     'message' => 'Invalid admin credentials.'
