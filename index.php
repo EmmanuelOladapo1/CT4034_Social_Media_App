@@ -1,7 +1,8 @@
 <?php
 // Start session only once at the beginning
 session_start();
-
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
 
 /**
@@ -1939,6 +1940,7 @@ LIMIT 5";
     }
   }
 
+
   /**
    * Function for admin to delete a user
    *
@@ -1946,60 +1948,92 @@ LIMIT 5";
    * @param int $admin_id - ID of the admin performing the action
    * @return array - Status and message
    */
+
+  // Handle deletion before any output
+  if (isset($_GET['delete']) && is_admin()) {
+    echo "<!-- DEBUG: Delete handler triggered -->";
+    $target_user = (int)$_GET['delete'];
+    $admin_id = $_SESSION['user_id'];
+
+    echo "<!-- DEBUG: Attempting to delete user $target_user as admin $admin_id -->";
+
+    $result = admin_delete_user($target_user, $admin_id);
+
+    echo "<!-- DEBUG: Deletion result: " . print_r($result, true) . " -->";
+
+    if ($result['status'] === 'success') {
+      header("Location: " . $_SERVER['PHP_SELF'] . "?success=" . urlencode($result['message']));
+      exit;
+    } else {
+      header("Location: " . $_SERVER['PHP_SELF'] . "?error=" . urlencode($result['message']));
+      exit;
+    }
+  }
+
   function admin_delete_user($user_id, $admin_id)
   {
     global $conn;
+    error_log("Attempting to delete user $user_id by admin $admin_id");
 
-    if (isset($_GET['delete']) && is_admin()) {
-      $target_user = (int)$_GET['delete'];
-      $admin_id = $_SESSION['user_id'];
-
-      $result = admin_delete_user($target_user, $admin_id);
-
-      if ($result['status'] === 'success') {
-        header("Location: " . $_SERVER['PHP_SELF'] . "?success=" . urlencode($result['message']));
-      } else {
-        header("Location: " . $_SERVER['PHP_SELF'] . "?error=" . urlencode($result['message']));
-      }
-      exit;
-    }
     // Prevent deleting yourself
     if ($user_id == $admin_id) {
+      error_log("Deletion failed: Admin tried to delete themselves");
       return [
         'status' => 'error',
         'message' => 'You cannot delete your own admin account.'
       ];
     }
 
-    // Delete the user
-    $delete_query = "DELETE FROM users WHERE user_id = ?";
-    $delete_stmt = $conn->prepare($delete_query);
-    $delete_stmt->bind_param("i", $user_id);
+    try {
+      // Delete the user
+      $delete_query = "DELETE FROM users WHERE user_id = ?";
+      $delete_stmt = $conn->prepare($delete_query);
+      $delete_stmt->bind_param("i", $user_id);
 
-    if ($delete_stmt->execute()) {
-      return [
-        'status' => 'success',
-        'message' => 'User deleted successfully.'
-      ];
-    } else {
+      if ($delete_stmt->execute()) {
+        error_log("Deletion successful for user $user_id");
+        return [
+          'status' => 'success',
+          'message' => 'User deleted successfully.'
+        ];
+      } else {
+        error_log("Deletion failed: " . $conn->error);
+        return [
+          'status' => 'error',
+          'message' => 'Failed to delete user. Error: ' . $conn->error
+        ];
+      }
+    } catch (Exception $e) {
+      error_log("Deletion error: " . $e->getMessage());
       return [
         'status' => 'error',
-        'message' => 'Failed to delete user.'
+        'message' => 'Database error: ' . $e->getMessage()
       ];
     }
   }
 
+  // Modified show_admin_users function
   function show_admin_users()
   {
     global $conn;
+    echo "<!-- DEBUG: show_admin_users function called -->";
 
     echo '<div class="admin-users">';
-    if (isset($_GET['success'])) echo '<div class="alert success">' . htmlspecialchars($_GET['success']) . '</div>';
-    if (isset($_GET['error'])) echo '<div class="alert error">' . htmlspecialchars($_GET['error']) . '</div>';
+    if (isset($_GET['success'])) {
+      echo '<div class="alert success">' . htmlspecialchars($_GET['success']) . '</div>';
+      echo "<!-- DEBUG: Success message displayed -->";
+    }
+    if (isset($_GET['error'])) {
+      echo '<div class="alert error">' . htmlspecialchars($_GET['error']) . '</div>';
+      echo "<!-- DEBUG: Error message displayed -->";
+    }
 
     $users = $conn->query("SELECT * FROM users");
+    echo "<!-- DEBUG: Retrieved " . $users->num_rows . " users -->";
+
     echo '<table>';
     while ($user = $users->fetch_assoc()) {
+      echo "<!-- DEBUG: Rendering user " . $user['user_id'] . " -->";
       echo '<tr>
                 <td>' . $user['user_id'] . '</td>
                 <td>' . $user['username'] . '</td>
