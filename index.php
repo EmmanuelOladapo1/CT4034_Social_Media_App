@@ -1702,7 +1702,6 @@ function show_login_page()
             if (!empty($post['location_name']) || (!empty($post['latitude']) && !empty($post['longitude']))) {
 
               echo "<div class='post-location'>📍 ";
-              echo "<div class='post-actions'><form method='post' action='index.php?page=like_post' style='display:inline'><input type='hidden' name='post_id' value='{$post['post_id']}'><button type='submit' class='like-btn'>Like ({$post['like_count']})</button></form> <form style='display:inline' action='index.php?page=add_comment' method='post'><input type='hidden' name='post_id' value='{$post['post_id']}'><input type='text' name='content' placeholder='Comment...' required><button type='submit'>Comment</button></form></div>";
               echo !empty($post['location_name'])
                 ? htmlspecialchars($post['location_name'])
                 : 'Coordinates: ' . htmlspecialchars($post['latitude']) . ', ' . htmlspecialchars($post['longitude']);
