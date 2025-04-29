@@ -288,23 +288,20 @@ function logout_user()
  * @param string $password - Admin password
  * @return array - Status and message of the admin login process
  */
+
 function admin_login($username, $password)
 {
   global $conn;
 
-
-
+  // Sanitize inputs
   $username = sanitize_input($username);
+  $password = sanitize_input($password);
 
+  // Get admin user from database
   $stmt = $conn->prepare("SELECT user_id, username, password FROM users WHERE username = ? AND role = 'admin'");
-
   $stmt->bind_param("s", $username);
-
-
   $stmt->execute();
-
   $result = $stmt->get_result();
-
 
   if ($result->num_rows == 0) {
     return [
